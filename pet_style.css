@@ -1,0 +1,99 @@
+/* Basic layout */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+}
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(#cceeff, #a7ddff);
+}
+
+/* UI overlay */
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none; /* let canvas receive drags */
+}
+
+.card {
+  pointer-events: auto;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.card.small {
+  bottom: 80px;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+#mode-menu button {
+  appearance: none;
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: white;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform .06s ease, background .2s ease;
+}
+#mode-menu button:hover { background: #fff7e6; }
+#mode-menu button:active { transform: translateY(1px); }
+
+/* Status bars (used by normal mode when enabled) */
+#stats {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  pointer-events: auto;
+  background: rgba(255,255,255,0.85);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  min-width: 180px;
+}
+.bar {
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transition: width .25s ease;
+}
+#hygiene-bar { background: #38bdf8; }
+#hunger-bar { background: #fb923c; }
+#energy-bar { background: #a78bfa; }
+
+/* Speech bubble (for reactions) */
+#bubble {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: rgba(255,255,255,0.95);
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  pointer-events: none;
+  font-size: 14px;
+  display: none;
+}
