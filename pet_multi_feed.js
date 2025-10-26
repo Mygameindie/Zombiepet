@@ -73,7 +73,7 @@
 
   // === Foods ===
   const foods = [
-    { name: 'Fish', imgSrc: 'food1.png', liked: true,  x: 300, y: canvas.height / 2 + 180, w: 100, h: 50 },
+    { name: 'Fish', imgSrc: 'food1.png', liked: true,  x: 300, y: canvas.height / 2 + 180, w: 100, h: 100 },
     { name: 'candy', imgSrc: 'food2.png', liked: false, x: 520, y: canvas.height / 2 + 180, w: 100, h: 100 },
   ];
   foods.forEach(f => {
@@ -236,22 +236,28 @@
     }
   }
 
-  function drawFoods() {
+   function drawFoods() {
     for (const f of foods) {
       if (!f.visible) continue;
       const img = f.img;
       if (img && img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, f.x - f.w / 2, f.y - f.h / 1, f.w, f.h);
+        ctx.drawImage(img, f.x - f.w / 2, f.y - f.h / 2, f.w, f.h);
       } else {
         ctx.fillStyle = f.liked ? '#8bc34a' : '#ff7043';
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.w / 2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(f.x - f.w / 2, f.y - f.h / 2, f.w, f.h); // 🔹 square instead of circle
+		// for top-centered drawing
+const foodLeft = f.x - f.w / 2;
+const foodRight = f.x + f.w / 2;
+const foodTop = f.y;          // top edge
+const foodBottom = f.y + f.h; // bottom edge
       }
     }
   }
 
-  // === Main Loop ===
+
+
+    // === Main Loop ===
+   // === Main Loop ===
   function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ground();
@@ -267,17 +273,11 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
-
   window.addEventListener('resize', () => {
     resizeCanvas();
     groundY = canvas.height - groundHeight;
-    floorY = canvas.height / 2 + 200;
-    pet.x = canvas.width / 2;
-    pet.y = canvas.height / 2;
-    foods.forEach(f => {
-      f.x = f.origX;
-      f.y = canvas.height / 2 + 180;
-    });
+    pet.y = groundY - 250;
+    foods.forEach(f => (f.y = groundY - 100));
   });
 
   // === Cleanup ===
