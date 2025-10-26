@@ -8,23 +8,17 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
-  <div id="hint">🍖 Drag food onto your pet!</div>
-  <script src="feed_mode.js"></script>
-</body>
-  <canvas id="canvas"></canvas>
 
   <div id="ui">
     <div id="mode-menu" class="card">
       <button id="normal-btn">🧸 Normal</button>
-      <button id="feed-btn">🍖 Feed</button>
+      <button id="feed-btn" class="menu-button">🍖 Feed</button>
     </div>
-
     <div id="hint" class="card small">
       <p id="hint-text">Tip: Click a mode to start.</p>
     </div>
   </div>
 
-  <!-- Mode controller: dynamically loads one mode at a time -->
   <script src="pet_modes.js"></script>
 </body>
 </html>
