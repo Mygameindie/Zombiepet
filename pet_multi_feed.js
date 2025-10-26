@@ -11,7 +11,8 @@
   const soundPool = {
     yum: [new Audio('yummy.mp3'), new Audio('yummy.mp3'), new Audio('yummy.mp3')],
     yuck: [new Audio('yuck.mp3'), new Audio('yuck.mp3'), new Audio('yuck.mp3')],
-    bounce: [new Audio('bounce.mp3'), new Audio('bounce.mp3')]
+    bounce: [new Audio('bounce.mp3'), new Audio('bounce.mp3')],
+    frozen: [new Audio('frozen.mp3'), new Audio('frozen.mp3')] // 🧊 new sound for ice lettuce
   };
   let soundIndex = 0;
   function playSound(key) {
@@ -31,12 +32,21 @@
     normal: new Image(),
     happy: new Image(),
     disgust: new Image(),
+    brainfreeze: new Image(), // 🧊 new reaction image
   };
   petImgs.normal.src = 'base.png';
   petImgs.happy.src = 'base_happy.png';
   petImgs.disgust.src = 'base_disgust.png';
+  petImgs.brainfreeze.src = 'base_brainfreeze.png';
 
-  const pet = { x: canvas.width / 2, y: canvas.height / 2, w: 300, h: 300, mood: 'normal' };
+  // === Pet ===
+  const pet = { 
+    x: canvas.width / 2, 
+    y: canvas.height - 100 - 150, // stay on floor
+    w: 300, 
+    h: 300, 
+    mood: 'normal' 
+  };
 
   // === Bubble ===
   let bubble = document.getElementById('bubble');
@@ -54,6 +64,7 @@
     bubble.style.display = 'none';
     document.body.appendChild(bubble);
   }
+
   function showBubble(text) {
     bubble.style.left = pet.x + 'px';
     bubble.style.top = pet.y - pet.h / 2 - 40 + 'px';
@@ -64,32 +75,60 @@
   }
 
   // === Foods ===
-  const foods = [];
+ const foods = []; // stores active food objects currently spawned
 
-  // === Spawn System ===
-  const spawnMap = {
-    fish: { name: 'Fish', imgSrc: 'food1.png', liked: true, w: 200, h: 100 },
-    candy: { name: 'Candy', imgSrc: 'food2.png', liked: false, w: 100, h: 100 }
-  };
-
+const spawnMap = {
+  fish: { 
+    name: 'Fish', 
+    imgSrc: 'food1.png',   // image file
+    liked: true,            // pet will like it (triggers happy reaction)
+    w: 200, h: 100,         // width & height
+    type: 'normal'          // disappears when eaten
+  },
+  garlic: { 
+    name: 'garlic', 
+    imgSrc: 'food2.png',
+    liked: false,           // pet dislikes it
+    w: 100, h: 100,
+    type: 'normal' 
+  },
+  icelettuce: { 
+    name: 'Ice Lettuce',
+    imgSrc: 'food3.png',
+    liked: true,
+    w: 200, h: 200,
+    type: 'ice'             // stays visible, causes “brainfreeze”
+  },
+  brain: { 
+    name: 'brain', 
+    imgSrc: 'food4.png',   // image file
+    liked: true,            // pet will like it (triggers happy reaction)
+    w: 100, h: 100,         // width & height
+    type: 'normal'          // disappears when eaten
+  
+  },
+};
   function spawnFood(type) {
-    const def = spawnMap[type];
-    if (!def) return;
+  const def = spawnMap[type];
+  if (!def) return;
 
-    const f = {
-      ...def,
-      img: new Image(),
-      drag: false,
-      visible: true,
-      justSpawned: true,
-      vy: 0,
-      x: pet.x + (Math.random() * 200 - 100),
-      y: pet.y - 250,
-    };
-    f.img.src = def.imgSrc;
-    setTimeout(() => (f.justSpawned = false), 800);
-    foods.push(f);
-  }
+  // ✅ recalc floor position safely here
+  const floor = canvas.height - groundHeight - 10;
+
+  const f = {
+    ...def,
+    img: new Image(),
+    drag: false,
+    visible: true,
+    justSpawned: true,
+    vy: 0,
+    x: pet.x + (Math.random() * 200 - 100),
+    y: floor - def.h / 2, // 👈 always correct, matches current ground
+  };
+  f.img.src = def.imgSrc;
+  setTimeout(() => (f.justSpawned = false), 800);
+  foods.push(f);
+}
 
   // === Clear System ===
   function clearFoods() {
@@ -155,23 +194,36 @@
 
   // === Collision ===
   function checkCollision(f) {
-    if (!f.visible || f.justSpawned) return;
-    const dx = Math.abs(f.x - pet.x);
-    const dy = Math.abs(f.y - pet.y);
-    const hit = dx < (f.w / 2 + pet.w / 2) && dy < (f.h / 2 + pet.h / 2);
-    if (hit) {
-      pet.mood = f.liked ? 'happy' : 'disgust';
-      showBubble(f.liked ? 'Yummy!' : 'Yuck!');
-      playSound(f.liked ? 'yum' : 'yuck');
-      setTimeout(() => (pet.mood = 'normal'), 1000);
-      f.visible = false;
+  if (!f.visible || f.justSpawned) return;
+
+  const dx = Math.abs(f.x - pet.x);
+  const dy = Math.abs(f.y - pet.y);
+  const hit = dx < (f.w / 2 + pet.w / 2) && dy < (f.h / 2 + pet.h / 2);
+
+  if (hit) {
+    // 🧊 Special Ice Lettuce reaction (disappears after feed)
+    if (f.type === 'ice') {
+      pet.mood = 'brainfreeze';
+      showBubble('Brrr! 🧊');
+      playSound('frozen');
+      setTimeout(() => (pet.mood = 'normal'), 1500);
+      f.visible = false; // 👈 disappears after being eaten
+      return;
     }
+
+    // 🍣 Normal or garlic foods
+    pet.mood = f.liked ? 'happy' : 'disgust';
+    showBubble(f.liked ? 'Yummy!' : 'Yuck!');
+    playSound(f.liked ? 'yum' : 'yuck');
+    setTimeout(() => (pet.mood = 'normal'), 1500);
+    f.visible = false;
   }
+}
 
   // === Gravity ===
   const gravity = 0.6;
   const bounce = 0.4;
-  let floorY = canvas.height / 2 + 200;
+  let floorY = canvas.height - groundHeight - 10;
 
   function applyGravity() {
     for (const f of foods) {
@@ -226,15 +278,38 @@
   window.addEventListener('resize', () => {
     resizeCanvas();
     groundY = canvas.height - groundHeight;
-    pet.y = groundY - 250;
+    pet.y = groundY - pet.h / 2; // keep pet on floor
   });
 
-  // === Hook Buttons ===
+  // === Create Spawn Buttons (Feed Mode Only) ===
+  let spawnButtons = document.getElementById('spawn-buttons');
+  if (!spawnButtons) {
+    spawnButtons = document.createElement('div');
+    spawnButtons.id = 'spawn-buttons';
+    spawnButtons.style.position = 'fixed';
+    spawnButtons.style.top = '20px';
+    spawnButtons.style.left = '20px';
+    spawnButtons.style.zIndex = '999';
+    spawnButtons.innerHTML = `
+      <button id="spawnicelettuce">Spawn Ice Lettuce 🧊</button>
+      <button id="spawnFish">Spawn Fish 🍣</button>
+	  <button id="spawnBrain">Spawn brain 🧠</button>
+      <button id="spawngarlic">Spawn garlic 🧄</button>
+      <button id="clearFoods">🧹 Clear</button>
+    `;
+    document.body.appendChild(spawnButtons);
+  }
+
+  // Hook up buttons
   const btnFish = document.getElementById('spawnFish');
-  const btnCandy = document.getElementById('spawnCandy');
+  const btnBrain = document.getElementById('spawnBrain');
+  const btngarlic = document.getElementById('spawngarlic');
+  const btnLettuce = document.getElementById('spawnicelettuce');
   const btnClear = document.getElementById('clearFoods');
   if (btnFish) btnFish.addEventListener('click', () => spawnFood('fish'));
-  if (btnCandy) btnCandy.addEventListener('click', () => spawnFood('candy'));
+  if (btngarlic) btngarlic.addEventListener('click', () => spawnFood('garlic'));
+  if (btnBrain) btnBrain.addEventListener('click', () => spawnFood('brain'));
+  if (btnLettuce) btnLettuce.addEventListener('click', () => spawnFood('icelettuce'));
   if (btnClear) btnClear.addEventListener('click', clearFoods);
 
   // === Make Mode Menu Draggable ===
@@ -281,6 +356,8 @@
     listeners.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
     window.removeEventListener('resize', resizeCanvas);
     if (bubble) bubble.style.display = 'none';
+    if (spawnButtons) spawnButtons.remove(); // remove feed buttons when leaving mode
   };
+
   window._modeName = 'feed';
 })();

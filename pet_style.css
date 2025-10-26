@@ -73,7 +73,7 @@ canvas {
   background: #e5e7eb;
   border-radius: 999px;
   overflow: hidden;
-  margin: 6px 0;
+  margin: 10px ;
 }
 .bar span {
   display: block;

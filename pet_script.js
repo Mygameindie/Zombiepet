@@ -23,16 +23,13 @@
   imgs.fly0.src  = 'base2.png';
   imgs.fly1.src  = 'base3.png';
 
-  // Pet state
-  const pet = {
-    x: canvas.width / 2,
-    y: groundY - 250,
-    w: 300,
-    h: 300,
-    oldx: null,
-    oldy: null,
-    dragging: false,
-  };
+  const pet = { 
+  x: canvas.width / 2, 
+  y: canvas.height - 100 - 150, // 👈 stay on floor: groundHeight(100) + half pet height(150)
+  w: 300, 
+  h: 300, 
+  mood: 'normal' 
+};
   pet.oldx = pet.x;
   pet.oldy = pet.y;
 
