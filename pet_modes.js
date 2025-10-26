@@ -24,15 +24,15 @@
   function loadMode(src, label) {
     unloadActiveMode();
 
-    hint.textContent = `Loading ${label}...`;
+
 
     const s = document.createElement('script');
     s.src = src + '?v=' + Date.now(); // cache-bust during dev
     s.onload = () => {
-      hint.textContent = `${label} ready`;
+      
     };
     s.onerror = () => {
-      hint.textContent = `Failed to load ${label}. Check console.`;
+
     };
     document.body.appendChild(s);
     activeScriptEl = s;

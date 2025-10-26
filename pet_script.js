@@ -27,8 +27,8 @@
   const pet = {
     x: canvas.width / 2,
     y: groundY - 250,
-    w: 180,
-    h: 250,
+    w: 300,
+    h: 300,
     oldx: null,
     oldy: null,
     dragging: false,
