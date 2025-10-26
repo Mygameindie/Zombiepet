@@ -96,7 +96,7 @@ const spawnMap = {
     name: 'Ice Lettuce',
     imgSrc: 'food3.png',
     liked: true,
-    w: 200, h: 200,
+    w: 100, h: 100,
     type: 'ice'             // stays visible, causes “brainfreeze”
   },
   brain: { 
@@ -123,7 +123,7 @@ const spawnMap = {
     justSpawned: true,
     vy: 0,
     x: pet.x + (Math.random() * 200 - 100),
-    y: floor - def.h / 2, // 👈 always correct, matches current ground
+y: pet.y - 300, // 👈 start above pet, so it will fall
   };
   f.img.src = def.imgSrc;
   setTimeout(() => (f.justSpawned = false), 800);
