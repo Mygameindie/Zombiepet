@@ -1,4 +1,4 @@
-// pet_multi_feed.js — Feed Mode + Gravity + Ducks Edible
+// pet_multi_feed.js — Feed Mode + Gravity + Ducks Edible + Candy + Spicy Added
 (function () {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -13,6 +13,7 @@
     yuck: [new Audio('yuck.mp3'), new Audio('yuck.mp3'), new Audio('yuck.mp3')],
     bounce: [new Audio('bounce.mp3'), new Audio('bounce.mp3')],
     frozen: [new Audio('frozen.mp3'), new Audio('frozen.mp3')],
+    spicy: [new Audio('spicy.mp3'), new Audio('spicy.mp3')], // 🌶️ new
   };
   let soundIndex = 0;
 
@@ -42,11 +43,13 @@
     happy: new Image(),
     disgust: new Image(),
     brainfreeze: new Image(),
+    spicy: new Image(), // 🌶️ new mood
   };
   petImgs.normal.src = 'base.png';
   petImgs.happy.src = 'base_happy.png';
   petImgs.disgust.src = 'base_disgust.png';
   petImgs.brainfreeze.src = 'base_brainfreeze.png';
+  petImgs.spicy.src = 'base_spicy.png'; // 🌶️ spicy face
 
   // === Pet ===
   const pet = { 
@@ -83,7 +86,7 @@
     showBubble._t = setTimeout(() => (bubble.style.display = 'none'), 1200);
   }
 
-  // === Foods (and Duck) ===
+  // === Foods (Duck + Candy + Spicy) ===
   const foods = [];
 
   const spawnMap = {
@@ -91,14 +94,15 @@
     garlic: { name: 'Garlic', imgSrc: 'food2.png', liked: false, w: 100, h: 100, type: 'normal' },
     icelettuce: { name: 'Ice Lettuce', imgSrc: 'food3.png', liked: true, w: 100, h: 100, type: 'ice' },
     brain: { name: 'Brain', imgSrc: 'food4.png', liked: true, w: 100, h: 100, type: 'normal' },
-    duck: { name: 'Rubber Duck', imgSrc: 'duck.png', liked: false, w: 120, h: 120, type: 'normal' }, // 🦆 edible now
+    duck: { name: 'Rubber Duck', imgSrc: 'duck.png', liked: false, w: 120, h: 120, type: 'normal' },
+    candy: { name: 'Candy', imgSrc: 'candy.png', liked: true, w: 100, h: 100, type: 'ice' },
+    spicy: { name: 'chili', imgSrc: 'chili.png', liked: true, w: 100, h: 100, type: 'spicy' }, // 🌶️ new
   };
 
   function spawnFood(type) {
     const def = spawnMap[type];
     if (!def) return;
 
-    const floor = canvas.height - groundHeight - 10;
     const f = {
       ...def,
       img: new Image(),
@@ -188,7 +192,6 @@
     const hit = dx < (f.w / 2 + pet.w / 2) && dy < (f.h / 2 + pet.h / 2);
 
     if (hit) {
-      // 🧊 Ice Lettuce special
       if (f.type === 'ice') {
         pet.mood = 'brainfreeze';
         showBubble('Brrr! 🧊');
@@ -198,9 +201,20 @@
         return;
       }
 
-      // 🦆 Duck or other normal food
+      // 🌶️ Spicy effect
+      if (f.type === 'spicy') {
+        pet.mood = 'spicy';
+        showBubble('Spicy! 🌶️');
+        playSound('spicy');
+        setTimeout(() => (pet.mood = 'normal'), 1500);
+        f.visible = false;
+        return;
+      }
+
+      // 🦆 Duck
       if (f.name === 'Rubber Duck') playQuack();
 
+      // Default reaction
       pet.mood = f.liked ? 'happy' : 'disgust';
       showBubble(f.liked ? 'Yummy!' : 'Yuck!');
       playSound(f.liked ? 'yum' : 'yuck');
@@ -217,7 +231,6 @@
   function applyGravity() {
     for (const f of foods) {
       if (f.drag || !f.visible) continue;
-
       if (f.y + f.h / 2 < floorY) {
         f.vy = (f.vy || 0) + gravity;
         f.y += f.vy;
@@ -286,6 +299,8 @@
       <button id="spawnBrain">Spawn Brain 🧠</button>
       <button id="spawngarlic">Spawn Garlic 🧄</button>
       <button id="spawnDuck">Spawn Duck 🦆</button>
+      <button id="spawncandy">Spawn Candy 🍬</button>
+      <button id="spawnSpicy">Spawn Spicy 🌶️</button>
       <button id="clearFoods">🧹 Clear</button>
     `;
     document.body.appendChild(spawnButtons);
@@ -296,6 +311,8 @@
   const btngarlic = document.getElementById('spawngarlic');
   const btnLettuce = document.getElementById('spawnicelettuce');
   const btnDuck = document.getElementById('spawnDuck');
+  const btnCandy = document.getElementById('spawncandy');
+  const btnSpicy = document.getElementById('spawnSpicy');
   const btnClear = document.getElementById('clearFoods');
 
   if (btnFish) btnFish.addEventListener('click', () => spawnFood('fish'));
@@ -303,6 +320,8 @@
   if (btnBrain) btnBrain.addEventListener('click', () => spawnFood('brain'));
   if (btnLettuce) btnLettuce.addEventListener('click', () => spawnFood('icelettuce'));
   if (btnDuck) btnDuck.addEventListener('click', () => spawnFood('duck'));
+  if (btnCandy) btnCandy.addEventListener('click', () => spawnFood('candy'));
+  if (btnSpicy) btnSpicy.addEventListener('click', () => spawnFood('spicy'));
   if (btnClear) btnClear.addEventListener('click', clearFoods);
 
   // === Cleanup ===
