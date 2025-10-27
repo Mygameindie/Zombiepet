@@ -7,14 +7,12 @@
   let activeScriptEl = null;
 
   function unloadActiveMode() {
-    // Call cleanup from the currently loaded mode if provided
     if (window._modeCleanup && typeof window._modeCleanup === 'function') {
       try { window._modeCleanup(); } catch (e) { console.warn('cleanup error', e); }
     }
     window._modeCleanup = null;
     window._modeName = null;
 
-    // Remove previously injected script element
     if (activeScriptEl) {
       activeScriptEl.remove();
       activeScriptEl = null;
@@ -24,15 +22,16 @@
   function loadMode(src, label) {
     unloadActiveMode();
 
-
-
     const s = document.createElement('script');
     s.src = src + '?v=' + Date.now(); // cache-bust during dev
     s.onload = () => {
-      
+      if (hint) hint.textContent = label + ' Loaded';
+
+      window._modeName = label;
     };
     s.onerror = () => {
-
+      console.error('Failed to load', src);
+      if (hint) hint.textContent = 'Error loading ' + label;
     };
     document.body.appendChild(s);
     activeScriptEl = s;
@@ -46,11 +45,15 @@
     loadMode('pet_multi_feed.js', 'Feeding Mode');
   });
 
-  
+  document.getElementById('shower-btn').addEventListener('click', () => {
+    loadMode('pet_shower.js', 'Shower Mode');
+  });
 
-document.getElementById('shower-btn').addEventListener('click', () => {
-  loadMode('pet_shower.js', 'Shower Mode');
-});
-// Auto-load Normal on first open
+  // 🧈 New Trolling Mode
+  document.getElementById('troll-btn').addEventListener('click', () => {
+    loadMode('trolling.js', 'Trolling Mode');
+  });
+
+  // Auto-load Normal on first open
   loadMode('pet_script.js', 'Normal Mode');
 })();
