@@ -46,6 +46,11 @@
     loadMode('pet_multi_feed.js', 'Feeding Mode');
   });
 
-  // Auto-load Normal on first open
+  
+
+document.getElementById('shower-btn').addEventListener('click', () => {
+  loadMode('pet_shower.js', 'Shower Mode');
+});
+// Auto-load Normal on first open
   loadMode('pet_script.js', 'Normal Mode');
 })();
