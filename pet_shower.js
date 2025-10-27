@@ -52,8 +52,8 @@
   const duck = {
     x: Math.random() * (canvas.width - 100),
     y: 0,
-    width: 100,
-    height: 100,
+    width: 150,
+    height: 150,
     vy: 0,
     grabbed: false,
   };
