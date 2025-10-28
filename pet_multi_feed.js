@@ -96,7 +96,7 @@
     brain: { name: 'Brain', imgSrc: 'food4.png', liked: true, w: 100, h: 100, type: 'normal' },
     duck: { name: 'Rubber Duck', imgSrc: 'duck.png', liked: false, w: 120, h: 120, type: 'normal' },
     candy: { name: 'Candy', imgSrc: 'candy.png', liked: true, w: 100, h: 100, type: 'ice' },
-    spicy: { name: 'chili', imgSrc: 'chili.png', liked: true, w: 100, h: 100, type: 'spicy' }, // 🌶️ new
+    spicy: { name: 'chili', imgSrc: 'chili.png', liked: true, w: 100, h: 150, type: 'spicy' }, // 🌶️ new
   };
 
   function spawnFood(type) {
