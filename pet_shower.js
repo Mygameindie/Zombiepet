@@ -1,11 +1,9 @@
 // ===========================================================
-// 🧼 SHOWER MODE (SAFE VERSION + WORKING DRAG + CUSTOM HITBOX)
+// 🧼 SHOWER MODE (Instant Sound + Scroll Bar + Mobile Support)
 // ===========================================================
 
 (() => {
-  // Stop any leftover sounds from other modes
-  SoundManager.stopAll();
-
+  if (window.SoundManager) SoundManager.stopAll();
   window._modeName = "shower";
 
   const canvas = document.getElementById("canvas");
@@ -37,25 +35,80 @@
   const duckImg = new Image();
   duckImg.src = "duck.png";
 
-  // === Sounds ===
-  const quackSound = new Audio("quack.mp3");
-  const splashSound = new Audio("splash.mp3");
+  // ===========================================================
+  // 🎵 INSTANT SOUND SYSTEM (preload pools)
+  // ===========================================================
+  const soundPool = {
+    quack: [new Audio("quack.mp3"), new Audio("quack.mp3"), new Audio("quack.mp3")],
+    splash: [new Audio("splash.mp3"), new Audio("splash.mp3")],
+    bubble: [new Audio("bubble.mp3"), new Audio("bubble.mp3")],
+    foam: [new Audio("foam.mp3"), new Audio("foam.mp3")],
+  };
+  let soundIndex = 0;
 
-  function playSafeSound(audio, volume = 0.9) {
-    SoundManager.playClone(audio, volume);
+  function playInstantSound(key, volume = 0.9, rate = 1.0) {
+    const pool = soundPool[key];
+    if (!pool) return;
+    const s = pool[soundIndex % pool.length];
+    soundIndex++;
+    try {
+      s.pause();
+      s.currentTime = 0;
+      s.volume = volume;
+      s.playbackRate = rate;
+      s.play();
+    } catch {}
   }
 
-  // === Button ===
-  const spawnDuckBtn = document.createElement("button");
-  spawnDuckBtn.textContent = "🐤 Spawn Rubber Duck";
-  spawnDuckBtn.className = "mode-button";
-  spawnDuckBtn.style.position = "absolute";
-  spawnDuckBtn.style.top = "20px";
-  spawnDuckBtn.style.left = "20px";
-  spawnDuckBtn.style.zIndex = "50";
-  document.body.appendChild(spawnDuckBtn);
+  // ===========================================================
+  // 🧭 SCROLLABLE TOOLBAR
+  // ===========================================================
+  const showerBar = document.createElement("div");
+  showerBar.id = "shower-bar";
+  showerBar.classList.add("combined-scroll-bar");
+  showerBar.style.position = "fixed";
+  showerBar.style.top = "15px";
+  showerBar.style.left = "50%";
+  showerBar.style.transform = "translateX(-50%)";
+  showerBar.style.zIndex = "999";
+  showerBar.innerHTML = `
+    <button id="spawnDuckBtn">🐤 Rubber Duck</button>
+    <button id="spawnBubbleBtn">🫧 Bubble</button>
+    <button id="spawnFoamBtn">🧼 Foam</button>
+    <button id="clearBathBtn">🧹 Clear</button>
+  `;
+  document.body.appendChild(showerBar);
 
-  spawnDuckBtn.onclick = () => {
+  // === Drag-scroll helper (mobile + desktop) ===
+  function enableDragScroll(scrollElement) {
+    let isDown = false;
+    let startX, scrollLeft;
+    const start = (e) => {
+      isDown = true;
+      startX = (e.touches ? e.touches[0].pageX : e.pageX) - scrollElement.offsetLeft;
+      scrollLeft = scrollElement.scrollLeft;
+    };
+    const end = () => (isDown = false);
+    const move = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = (e.touches ? e.touches[0].pageX : e.pageX) - scrollElement.offsetLeft;
+      scrollElement.scrollLeft = scrollLeft - (x - startX) * 1.5;
+    };
+    scrollElement.addEventListener("mousedown", start);
+    scrollElement.addEventListener("touchstart", start, { passive: false });
+    scrollElement.addEventListener("mouseup", end);
+    scrollElement.addEventListener("mouseleave", end);
+    scrollElement.addEventListener("touchend", end);
+    scrollElement.addEventListener("mousemove", move);
+    scrollElement.addEventListener("touchmove", move, { passive: false });
+  }
+  enableDragScroll(showerBar);
+
+  // ===========================================================
+  // 🧩 BUTTON ACTIONS (Instant Sounds)
+  // ===========================================================
+  document.getElementById("spawnDuckBtn").onclick = () => {
     const duck = {
       x: Math.random() * (canvas.width - 100),
       y: 0,
@@ -65,10 +118,22 @@
       grabbed: false,
     };
     duckies.push(duck);
+    playInstantSound("quack", 0.9, 0.9 + Math.random() * 0.2);
+  };
 
-    const quack = new Audio("quack.mp3");
-    quack.volume = 0.8;
-    playSafeSound(quack);
+  document.getElementById("spawnBubbleBtn").onclick = () => {
+    playInstantSound("bubble");
+    baseImage.src = "base_bath2.png";
+  };
+
+  document.getElementById("spawnFoamBtn").onclick = () => {
+    playInstantSound("foam");
+    baseImage.src = "base_bath2.png";
+  };
+
+  document.getElementById("clearBathBtn").onclick = () => {
+    duckies.length = 0;
+    baseImage.src = "base_bath.png";
   };
 
   // ===========================================================
@@ -154,10 +219,7 @@
         y >= duck.y &&
         y <= duck.y + duck.height
       ) {
-        const quack = new Audio("quack.mp3");
-        quack.volume = 0.8;
-        quack.playbackRate = 0.9 + Math.random() * 0.2;
-        playSafeSound(quack);
+        playInstantSound("quack", 0.9, 0.9 + Math.random() * 0.2);
       }
     });
   }
@@ -174,7 +236,7 @@
   canvas.addEventListener("click", handleTap);
 
   // ===========================================================
-  // 🧩 HITBOX
+  // 🧩 HITBOX (for sponge washing)
   // ===========================================================
   const hitbox = {
     type: "rect",
@@ -183,13 +245,13 @@
     width: 130,
     height: 150,
     radius: 120,
-    debug: true,
+    debug: false,
   };
 
   function drawHitbox() {
     if (!hitbox.debug) return;
     ctx.save();
-    ctx.strokeStyle = "rgba(0,255,0,0)";
+    ctx.strokeStyle = "rgba(0,255,0,0.3)";
     ctx.lineWidth = 2;
     if (hitbox.type === "rect") {
       ctx.strokeRect(
@@ -260,9 +322,7 @@
     const touching = isTouchingHitbox(sponge);
     if (touching && !baseImage.src.includes("base_bath2.png")) {
       baseImage.src = "base_bath2.png";
-      if (!sponge.img.src.includes("sponge.png")) {
-        playSafeSound(splashSound);
-      }
+      playInstantSound("splash");
     } else if (!touching && !baseImage.src.includes("base_bath.png")) {
       baseImage.src = "base_bath.png";
     }
@@ -303,21 +363,14 @@
   update();
 
   // ===========================================================
-  // 🧹 CLEANUP WHEN MODE CHANGES (no leftover hitbox)
+  // 🧹 CLEANUP
   // ===========================================================
-window._modeCleanup = function () {
-  running = false;
-  cancelAnimationFrame(raf);
-  spawnDuckBtn?.remove();
-
-  // 🧹 stop all cloned sounds (splash / quack)
-  if (window.SoundManager) SoundManager.stopAll();
-
-  // clear any hitbox or drawing
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // safely remove listeners by replacing canvas
-  const newCanvas = canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(newCanvas, canvas);
-};
+  window._modeCleanup = function () {
+    running = false;
+    cancelAnimationFrame(raf);
+    showerBar?.remove();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+  };
 })();

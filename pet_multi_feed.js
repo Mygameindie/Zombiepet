@@ -1,102 +1,113 @@
-// pet_multi_feed.js — Feed Mode + Gravity + Ducks Edible + Candy + Spicy Added
+// ===========================================================
+// 🐾 FEED MODE (Instant Sound + Gravity + Scroll Bar + Mobile)
+// ===========================================================
 (function () {
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
   resizeCanvas();
 
   const groundHeight = 100;
   let groundY = canvas.height - groundHeight;
 
-  // === Sounds ===
+  // ===========================================================
+  // 🎵 INSTANT SOUND POOLS
+  // ===========================================================
   const soundPool = {
-    yum: [new Audio('yummy.mp3'), new Audio('yummy.mp3'), new Audio('yummy.mp3')],
-    yuck: [new Audio('yuck.mp3'), new Audio('yuck.mp3'), new Audio('yuck.mp3')],
-    bounce: [new Audio('bounce.mp3'), new Audio('bounce.mp3')],
-    frozen: [new Audio('frozen.mp3'), new Audio('frozen.mp3')],
-    spicy: [new Audio('spicy.mp3'), new Audio('spicy.mp3')], // 🌶️ new
+    yum: [new Audio("yummy.mp3"), new Audio("yummy.mp3"), new Audio("yummy.mp3")],
+    yuck: [new Audio("yuck.mp3"), new Audio("yuck.mp3"), new Audio("yuck.mp3")],
+    bounce: [new Audio("bounce.mp3"), new Audio("bounce.mp3")],
+    frozen: [new Audio("frozen.mp3"), new Audio("frozen.mp3")],
+    spicy: [new Audio("spicy.mp3"), new Audio("spicy.mp3")],
+    quack: [new Audio("quack.mp3"), new Audio("quack.mp3"), new Audio("quack.mp3")],
   };
   let soundIndex = 0;
 
-  function playSound(key) {
+  function playSound(key, volume = 0.9, rate = 1.0) {
     const pool = soundPool[key];
     if (!pool) return;
     const s = pool[soundIndex % pool.length];
+    soundIndex++;
     try {
       s.pause();
       s.currentTime = 0;
-      s.play().catch(() => {});
+      s.volume = volume;
+      s.playbackRate = rate;
+      s.play();
     } catch {}
-    soundIndex++;
   }
 
-  // 🦆 Quack sound
+  // ===========================================================
+  // 🦆 Quack Helper (instant, random pitch)
+  // ===========================================================
   function playQuack() {
-    const q = new Audio('quack.mp3');
-    q.volume = 0.8;
-    q.playbackRate = 0.9 + Math.random() * 0.2;
-    q.play().catch(() => {});
+    playSound("quack", 0.9, 0.9 + Math.random() * 0.2);
   }
 
-  // === Pet Images ===
+  // ===========================================================
+  // 🐾 PET IMAGES
+  // ===========================================================
   const petImgs = {
     normal: new Image(),
     happy: new Image(),
     disgust: new Image(),
     brainfreeze: new Image(),
-    spicy: new Image(), // 🌶️ new mood
+    spicy: new Image(),
   };
-  petImgs.normal.src = 'base.png';
-  petImgs.happy.src = 'base_happy.png';
-  petImgs.disgust.src = 'base_disgust.png';
-  petImgs.brainfreeze.src = 'base_brainfreeze.png';
-  petImgs.spicy.src = 'base_spicy.png'; // 🌶️ spicy face
+  petImgs.normal.src = "base.png";
+  petImgs.happy.src = "base_happy.png";
+  petImgs.disgust.src = "base_disgust.png";
+  petImgs.brainfreeze.src = "base_brainfreeze.png";
+  petImgs.spicy.src = "base_spicy.png";
 
-  // === Pet ===
-  const pet = { 
-    x: canvas.width / 2, 
+  const pet = {
+    x: canvas.width / 2,
     y: canvas.height - 100 - 150,
-    w: 300, 
-    h: 300, 
-    mood: 'normal' 
+    w: 300,
+    h: 300,
+    mood: "normal",
   };
 
-  // === Bubble ===
-  let bubble = document.getElementById('bubble');
+  // ===========================================================
+  // 💬 TEXT BUBBLE
+  // ===========================================================
+  let bubble = document.getElementById("bubble");
   if (!bubble) {
-    bubble = document.createElement('div');
-    bubble.id = 'bubble';
-    bubble.style.position = 'absolute';
-    bubble.style.transform = 'translate(-50%, -100%)';
-    bubble.style.background = 'rgba(255,255,255,0.95)';
-    bubble.style.borderRadius = '10px';
-    bubble.style.padding = '6px 10px';
-    bubble.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-    bubble.style.pointerEvents = 'none';
-    bubble.style.fontSize = '14px';
-    bubble.style.display = 'none';
+    bubble = document.createElement("div");
+    bubble.id = "bubble";
+    bubble.style.position = "absolute";
+    bubble.style.transform = "translate(-50%, -100%)";
+    bubble.style.background = "rgba(255,255,255,0.95)";
+    bubble.style.borderRadius = "10px";
+    bubble.style.padding = "6px 10px";
+    bubble.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+    bubble.style.pointerEvents = "none";
+    bubble.style.fontSize = "14px";
+    bubble.style.display = "none";
     document.body.appendChild(bubble);
   }
 
   function showBubble(text) {
-    bubble.style.left = pet.x + 'px';
-    bubble.style.top = pet.y - pet.h / 2 - 40 + 'px';
+    bubble.style.left = pet.x + "px";
+    bubble.style.top = pet.y - pet.h / 2 - 40 + "px";
     bubble.textContent = text;
-    bubble.style.display = 'block';
+    bubble.style.display = "block";
     clearTimeout(showBubble._t);
-    showBubble._t = setTimeout(() => (bubble.style.display = 'none'), 1200);
+    showBubble._t = setTimeout(() => (bubble.style.display = "none"), 1200);
   }
 
-  // === Foods (Duck + Candy + Spicy) ===
+  // ===========================================================
+  // 🍽️ FOODS
+  // ===========================================================
   const foods = [];
 
   const spawnMap = {
-    fish: { name: 'Fish', imgSrc: 'food1.png', liked: true, w: 200, h: 100, type: 'normal' },
-    garlic: { name: 'Garlic', imgSrc: 'food2.png', liked: false, w: 100, h: 100, type: 'normal' },
-    icelettuce: { name: 'Ice Lettuce', imgSrc: 'food3.png', liked: true, w: 100, h: 100, type: 'ice' },
-    brain: { name: 'Brain', imgSrc: 'food4.png', liked: true, w: 100, h: 100, type: 'normal' },
-    duck: { name: 'Rubber Duck', imgSrc: 'duck.png', liked: false, w: 120, h: 120, type: 'normal' },
-    candy: { name: 'Candy', imgSrc: 'candy.png', liked: true, w: 100, h: 100, type: 'ice' },
-    spicy: { name: 'chili', imgSrc: 'chili.png', liked: true, w: 100, h: 150, type: 'spicy' }, // 🌶️ new
+    fish: { name: "Fish", imgSrc: "food1.png", liked: true, w: 200, h: 100, type: "normal" },
+    garlic: { name: "Garlic", imgSrc: "food2.png", liked: false, w: 100, h: 100, type: "normal" },
+    icelettuce: { name: "Ice Lettuce", imgSrc: "food3.png", liked: true, w: 100, h: 100, type: "ice" },
+    brain: { name: "Brain", imgSrc: "food4.png", liked: true, w: 100, h: 100, type: "normal" },
+    duck: { name: "Rubber Duck", imgSrc: "duck.png", liked: false, w: 120, h: 120, type: "normal" },
+    candy: { name: "Candy", imgSrc: "candy.png", liked: true, w: 100, h: 100, type: "ice" },
+    spicy: { name: "Chili", imgSrc: "chili.png", liked: true, w: 100, h: 150, type: "spicy" },
   };
 
   function spawnFood(type) {
@@ -117,16 +128,16 @@
     setTimeout(() => (f.justSpawned = false), 800);
     foods.push(f);
 
-    // Quack when spawning duck
-    if (type === 'duck') playQuack();
+    if (type === "duck") playQuack();
   }
 
-  // === Clear System ===
   function clearFoods() {
     foods.length = 0;
   }
 
-  // === Drag System ===
+  // ===========================================================
+  // 🖐️ DRAG LOGIC (Mobile + Desktop)
+  // ===========================================================
   let activeFood = null;
   let hasMoved = false;
 
@@ -174,56 +185,48 @@
   }
 
   const listeners = [
-    ['mousedown', down],
-    ['mousemove', move],
-    ['mouseup', up],
-    ['touchstart', down],
-    ['touchmove', move],
-    ['touchend', up],
+    ["mousedown", down],
+    ["mousemove", move],
+    ["mouseup", up],
+    ["touchstart", down],
+    ["touchmove", move],
+    ["touchend", up],
   ];
   listeners.forEach(([ev, fn]) => canvas.addEventListener(ev, fn, { passive: false }));
 
-  // === Collision ===
+  // ===========================================================
+  // 💥 COLLISION DETECTION
+  // ===========================================================
   function checkCollision(f) {
     if (!f.visible || f.justSpawned) return;
-
     const dx = Math.abs(f.x - pet.x);
     const dy = Math.abs(f.y - pet.y);
-    const hit = dx < (f.w / 2 + pet.w / 2) && dy < (f.h / 2 + pet.h / 2);
+    const hit = dx < f.w / 2 + pet.w / 2 && dy < f.h / 2 + pet.h / 2;
+    if (!hit) return;
 
-    if (hit) {
-      if (f.type === 'ice') {
-        pet.mood = 'brainfreeze';
-        showBubble('Brrr! 🧊');
-        playSound('frozen');
-        setTimeout(() => (pet.mood = 'normal'), 1500);
-        f.visible = false;
-        return;
-      }
-
-      // 🌶️ Spicy effect
-      if (f.type === 'spicy') {
-        pet.mood = 'spicy';
-        showBubble('Spicy! 🌶️');
-        playSound('spicy');
-        setTimeout(() => (pet.mood = 'normal'), 1500);
-        f.visible = false;
-        return;
-      }
-
-      // 🦆 Duck
-      if (f.name === 'Rubber Duck') playQuack();
-
-      // Default reaction
-      pet.mood = f.liked ? 'happy' : 'disgust';
-      showBubble(f.liked ? 'Yummy!' : 'Yuck!');
-      playSound(f.liked ? 'yum' : 'yuck');
-      setTimeout(() => (pet.mood = 'normal'), 1500);
-      f.visible = false;
+    // Reaction types
+    if (f.type === "ice") {
+      pet.mood = "brainfreeze";
+      showBubble("Brrr! 🧊");
+      playSound("frozen");
+    } else if (f.type === "spicy") {
+      pet.mood = "spicy";
+      showBubble("Spicy! 🌶️");
+      playSound("spicy");
+    } else {
+      if (f.name === "Rubber Duck") playQuack();
+      pet.mood = f.liked ? "happy" : "disgust";
+      showBubble(f.liked ? "Yummy!" : "Yuck!");
+      playSound(f.liked ? "yum" : "yuck");
     }
+
+    f.visible = false;
+    setTimeout(() => (pet.mood = "normal"), 1500);
   }
 
-  // === Gravity ===
+  // ===========================================================
+  // 🌍 GRAVITY + DRAW
+  // ===========================================================
   const gravity = 0.6;
   const bounce = 0.4;
   let floorY = canvas.height - groundHeight - 10;
@@ -242,9 +245,8 @@
     }
   }
 
-  // === Draw ===
   function ground() {
-    ctx.fillStyle = '#5c4033';
+    ctx.fillStyle = "#5c4033";
     ctx.fillRect(0, groundY, canvas.width, groundHeight);
   }
 
@@ -273,64 +275,96 @@
   }
   loop();
 
-  // === Resize ===
+  // ===========================================================
+  // 📱 RESIZE
+  // ===========================================================
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     resizeCanvas();
     groundY = canvas.height - groundHeight;
     pet.y = groundY - pet.h / 2;
   });
 
-  // === Buttons ===
-  let spawnButtons = document.getElementById('spawn-buttons');
+  // ===========================================================
+  // 🧭 SCROLLABLE FEED TOOLBAR
+  // ===========================================================
+  let spawnButtons = document.getElementById("spawn-buttons");
   if (!spawnButtons) {
-    spawnButtons = document.createElement('div');
-    spawnButtons.id = 'spawn-buttons';
-    spawnButtons.style.position = 'fixed';
-    spawnButtons.style.top = '20px';
-    spawnButtons.style.left = '20px';
-    spawnButtons.style.zIndex = '999';
+    spawnButtons = document.createElement("div");
+    spawnButtons.id = "spawn-buttons";
+    spawnButtons.classList.add("combined-scroll-bar");
+    spawnButtons.style.position = "fixed";
+    spawnButtons.style.top = "15px";
+    spawnButtons.style.left = "50%";
+    spawnButtons.style.transform = "translateX(-50%)";
+    spawnButtons.style.zIndex = "999";
     spawnButtons.innerHTML = `
-      <button id="spawnicelettuce">Spawn Ice Lettuce 🧊</button>
-      <button id="spawnFish">Spawn Fish 🍣</button>
-      <button id="spawnBrain">Spawn Brain 🧠</button>
-      <button id="spawngarlic">Spawn Garlic 🧄</button>
-      <button id="spawnDuck">Spawn Duck 🦆</button>
-      <button id="spawncandy">Spawn Candy 🍬</button>
-      <button id="spawnSpicy">Spawn Spicy 🌶️</button>
+      <button id="spawnFish">🐟 Fish</button>
+      <button id="spawngarlic">🧄 Garlic</button>
+      <button id="spawnicelettuce">🥬 Ice Lettuce</button>
+      <button id="spawnBrain">🧠 Brain</button>
+      <button id="spawnDuck">🦆 Duck</button>
+      <button id="spawncandy">🍬 Candy</button>
+      <button id="spawnSpicy">🌶️ Spicy</button>
       <button id="clearFoods">🧹 Clear</button>
     `;
     document.body.appendChild(spawnButtons);
   }
 
-  const btnFish = document.getElementById('spawnFish');
-  const btnBrain = document.getElementById('spawnBrain');
-  const btngarlic = document.getElementById('spawngarlic');
-  const btnLettuce = document.getElementById('spawnicelettuce');
-  const btnDuck = document.getElementById('spawnDuck');
-  const btnCandy = document.getElementById('spawncandy');
-  const btnSpicy = document.getElementById('spawnSpicy');
-  const btnClear = document.getElementById('clearFoods');
+  // --- Enable drag-scroll
+  function enableDragScroll(scrollElement) {
+    let isDown = false;
+    let startX, scrollLeft;
+    const start = (e) => {
+      isDown = true;
+      startX = (e.touches ? e.touches[0].pageX : e.pageX) - scrollElement.offsetLeft;
+      scrollLeft = scrollElement.scrollLeft;
+    };
+    const end = () => (isDown = false);
+    const move = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = (e.touches ? e.touches[0].pageX : e.pageX) - scrollElement.offsetLeft;
+      scrollElement.scrollLeft = scrollLeft - (x - startX) * 1.5;
+    };
+    scrollElement.addEventListener("mousedown", start);
+    scrollElement.addEventListener("touchstart", start, { passive: false });
+    scrollElement.addEventListener("mouseup", end);
+    scrollElement.addEventListener("mouseleave", end);
+    scrollElement.addEventListener("touchend", end);
+    scrollElement.addEventListener("mousemove", move);
+    scrollElement.addEventListener("touchmove", move, { passive: false });
+  }
+  enableDragScroll(spawnButtons);
 
-  if (btnFish) btnFish.addEventListener('click', () => spawnFood('fish'));
-  if (btngarlic) btngarlic.addEventListener('click', () => spawnFood('garlic'));
-  if (btnBrain) btnBrain.addEventListener('click', () => spawnFood('brain'));
-  if (btnLettuce) btnLettuce.addEventListener('click', () => spawnFood('icelettuce'));
-  if (btnDuck) btnDuck.addEventListener('click', () => spawnFood('duck'));
-  if (btnCandy) btnCandy.addEventListener('click', () => spawnFood('candy'));
-  if (btnSpicy) btnSpicy.addEventListener('click', () => spawnFood('spicy'));
-  if (btnClear) btnClear.addEventListener('click', clearFoods);
+  // --- Button Events
+  const btnMap = {
+    spawnFish: "fish",
+    spawngarlic: "garlic",
+    spawnBrain: "brain",
+    spawnicelettuce: "icelettuce",
+    spawnDuck: "duck",
+    spawncandy: "candy",
+    spawnSpicy: "spicy",
+  };
+  for (const id in btnMap) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", () => spawnFood(btnMap[id]));
+  }
+  document.getElementById("clearFoods").onclick = clearFoods;
 
-  // === Cleanup ===
+  // ===========================================================
+  // 🧹 CLEANUP
+  // ===========================================================
   window._modeCleanup = function () {
     listeners.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
-    window.removeEventListener('resize', resizeCanvas);
-    if (bubble) bubble.style.display = 'none';
+    window.removeEventListener("resize", resizeCanvas);
+    if (bubble) bubble.style.display = "none";
     if (spawnButtons) spawnButtons.remove();
   };
 
-  window._modeName = 'feed';
+  window._modeName = "feed";
 })();
