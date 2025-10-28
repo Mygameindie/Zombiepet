@@ -1,5 +1,5 @@
 // ===========================================================
-// 🎤 ONE-CLICK KARAOKE MODE + ⏸️ Pause/Resume Button
+// 🎤 ONE-CLICK KARAOKE MODE + ⏸️ Pause/Resume Button (fixed)
 // ===========================================================
 (() => {
   const canvas = document.getElementById("canvas");
@@ -117,26 +117,17 @@
   });
   document.body.appendChild(pauseBtn);
 
-  // === Karaoke button ===
+  // === Karaoke button (now one-click safe) ===
   const karaokeBtn = document.getElementById("karaoke-btn");
   karaokeBtn.addEventListener("click", () => {
     if (isPlaying) return;
+
     window._modeName = "karaoke";
     currentMode = "karaoke";
     drawIdle();
 
-    Object.assign(uploadInput.style, {
-      display: "block",
-      opacity: "0",
-      position: "fixed",
-      left: "0",
-      top: "0",
-      width: "100%",
-      height: "100%",
-      zIndex: "9999",
-    });
+    // ✅ Immediately open file picker under the same gesture
     uploadInput.click();
-    setTimeout(() => (uploadInput.style.display = "none"), 600);
   });
 
   // === Stop karaoke ===
@@ -181,62 +172,56 @@
     }
   }, 300);
 
-  // === File chosen (iOS-safe autoplay fix) ===
-uploadInput.addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file || isPlaying) return;
-  isPlaying = true;
+  // === File chosen — autoplay-safe, no double tap ===
+  uploadInput.addEventListener("change", async e => {
+    const file = e.target.files[0];
+    if (!file || isPlaying) return;
 
-  stopKaraoke();
+    stopKaraoke();
+    isPlaying = true;
 
-  const url = URL.createObjectURL(file);
-  const isVideo = file.type.startsWith("video/");
-  mediaPlayer = document.createElement(isVideo ? "video" : "audio");
-  mediaPlayer.src = url;
-  mediaPlayer.style.display = "none";
-  mediaPlayer.volume = 0.9;
+    const url = URL.createObjectURL(file);
+    const isVideo = file.type.startsWith("video/");
+    mediaPlayer = document.createElement(isVideo ? "video" : "audio");
+    mediaPlayer.src = url;
+    mediaPlayer.style.display = "none";
+    mediaPlayer.volume = 0.9;
+    if (isVideo) {
+      mediaPlayer.playsInline = true;
+      mediaPlayer.muted = false;
+    }
+    document.body.appendChild(mediaPlayer);
 
-  // 🟢 iOS-safe setup
-  if (isVideo) {
-    mediaPlayer.playsInline = true;
-    mediaPlayer.muted = true; // allow autoplay on Safari
-  }
+    // === Start animation ===
+    animationRunning = true;
+    drawPet();
+    clearInterval(animationInterval);
+    animationInterval = setInterval(() => {
+      currentBase = toggle ? musicBase1 : musicBase2;
+      toggle = !toggle;
+    }, 400);
 
-  document.body.appendChild(mediaPlayer);
+    // === Progress bar + pause button ===
+    progressContainer.style.display = "block";
+    pauseBtn.style.display = "block";
+    clearInterval(progressUpdater);
+    progressUpdater = setInterval(() => {
+      if (!mediaPlayer.duration) return;
+      const percent = (mediaPlayer.currentTime / mediaPlayer.duration) * 100;
+      progressBar.style.width = `${percent}%`;
+    }, 100);
 
-  // === Start animation ===
-  animationRunning = true;
-  drawPet();
-  clearInterval(animationInterval);
-  animationInterval = setInterval(() => {
-    currentBase = toggle ? musicBase1 : musicBase2;
-    toggle = !toggle;
-  }, 400);
+    // ✅ Try to play immediately (keeps gesture context)
+    try {
+      await mediaPlayer.play();
+    } catch (err) {
 
-  // === Progress bar + pause button ===
-  progressContainer.style.display = "block";
-  pauseBtn.style.display = "block";
-  clearInterval(progressUpdater);
-  progressUpdater = setInterval(() => {
-    if (!mediaPlayer.duration) return;
-    const percent = (mediaPlayer.currentTime / mediaPlayer.duration) * 100;
-    progressBar.style.width = `${percent}%`;
-  }, 100);
-
-  // === Try autoplay muted, then unmute ===
-  const tryPlay = () => {
-    mediaPlayer.play().then(() => {
-      if (isVideo) mediaPlayer.muted = false;
-
-    }).catch(() => {
-      console.warn("Autoplay blocked — waiting for tap");
-      // Show hint overlay for user
       const overlay = document.createElement("div");
       overlay.textContent = "🎬 Tap to start playback";
       Object.assign(overlay.style, {
         position: "fixed",
-        top: "0",
-        left: "0",
+        top: 0,
+        left: 0,
         width: "100%",
         height: "100%",
         background: "rgba(0,0,0,0.5)",
@@ -248,20 +233,14 @@ uploadInput.addEventListener("change", e => {
         zIndex: "9999",
       });
       document.body.appendChild(overlay);
-
-      const tapToPlay = () => {
-        mediaPlayer.play();
-        if (isVideo) mediaPlayer.muted = false;
+      const tapToPlay = async () => {
+        await mediaPlayer.play();
         overlay.remove();
-        document.removeEventListener("touchstart", tapToPlay);
         document.removeEventListener("click", tapToPlay);
+        document.removeEventListener("touchstart", tapToPlay);
       };
-      document.addEventListener("touchstart", tapToPlay, { once: true });
       document.addEventListener("click", tapToPlay, { once: true });
-    });
-  };
-
-  // iOS Photo app: always delay one frame after user file selection
-  setTimeout(tryPlay, 300);
-});
+      document.addEventListener("touchstart", tapToPlay, { once: true });
+    }
+  });
 })();
