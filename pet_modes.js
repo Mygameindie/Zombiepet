@@ -1,3 +1,32 @@
+// ===========================================================
+// 🎧 GLOBAL SOUND MANAGER (shared across all modes)
+// ===========================================================
+if (!window.SoundManager) {
+  window.SoundManager = {
+    active: [],
+    register(s) {
+      this.active.push(s);
+    },
+    stopAll() {
+      this.active.forEach(a => {
+        try {
+          a.pause();
+          a.currentTime = 0;
+        } catch {}
+      });
+      this.active = [];
+    },
+    playClone(base, volume = 0.9) {
+      try {
+        const s = base.cloneNode();
+        s.volume = volume;
+        s.play().catch(() => {});
+        this.register(s);
+      } catch {}
+    }
+  };
+}
+
 // pet_modes.js
 // Controls which mode is active. Ensures only ONE mode script runs at a time.
 
@@ -20,6 +49,7 @@
   }
 
   function loadMode(src, label) {
+	  if (window.SoundManager) SoundManager.stopAll();
     unloadActiveMode();
 
     const s = document.createElement('script');

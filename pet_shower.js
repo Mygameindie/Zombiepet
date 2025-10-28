@@ -3,6 +3,9 @@
 // ===========================================================
 
 (() => {
+  // Stop any leftover sounds from other modes
+  SoundManager.stopAll();
+
   window._modeName = "shower";
 
   const canvas = document.getElementById("canvas");
@@ -38,6 +41,10 @@
   const quackSound = new Audio("quack.mp3");
   const splashSound = new Audio("splash.mp3");
 
+  function playSafeSound(audio, volume = 0.9) {
+    SoundManager.playClone(audio, volume);
+  }
+
   // === Button ===
   const spawnDuckBtn = document.createElement("button");
   spawnDuckBtn.textContent = "🐤 Spawn Rubber Duck";
@@ -49,130 +56,128 @@
   document.body.appendChild(spawnDuckBtn);
 
   spawnDuckBtn.onclick = () => {
-  const duck = {
-    x: Math.random() * (canvas.width - 100),
-    y: 0,
-    width: 150,
-    height: 150,
-    vy: 0,
-    grabbed: false,
+    const duck = {
+      x: Math.random() * (canvas.width - 100),
+      y: 0,
+      width: 150,
+      height: 150,
+      vy: 0,
+      grabbed: false,
+    };
+    duckies.push(duck);
+
+    const quack = new Audio("quack.mp3");
+    quack.volume = 0.8;
+    playSafeSound(quack);
   };
-  duckies.push(duck);
 
-  // each spawn = new quack instance (so multiple ducks can overlap sound)
-  const quack = new Audio("quack.mp3");
-  quack.volume = 0.8; // adjust loudness if needed
-  quack.play().catch(() => {});
-};
+  // ===========================================================
+  // 🖐️ DRAG LOGIC (Sponge + Duck)
+  // ===========================================================
+  let dragTarget = null;
+  let offsetX = 0,
+    offsetY = 0;
 
-    // ===========================================================
-// 🖐️ DRAG LOGIC (Sponge + Duck) — Mouse + Touch, gravity-aware
-// ===========================================================
-let dragTarget = null;
-let offsetX = 0, offsetY = 0;
-
-function getPointerPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  let clientX, clientY;
-  if (e.touches && e.touches[0]) {
-    clientX = e.touches[0].clientX;
-    clientY = e.touches[0].clientY;
-  } else {
-    clientX = e.clientX;
-    clientY = e.clientY;
-  }
-  return { x: clientX - rect.left, y: clientY - rect.top };
-}
-
-function startDrag(e) {
-  e.preventDefault();
-  const { x, y } = getPointerPos(e);
-
-  // 🧽 sponge first
-  if (
-    x >= sponge.x &&
-    x <= sponge.x + sponge.width &&
-    y >= sponge.y &&
-    y <= sponge.y + sponge.height
-  ) {
-    dragTarget = sponge;
-    offsetX = x - sponge.x;
-    offsetY = y - sponge.y;
-    sponge.dragging = true;
-    return;
+  function getPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches[0]) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
-  // 🐤 ducks (topmost first)
-  for (let i = duckies.length - 1; i >= 0; i--) {
-    const duck = duckies[i];
+  function startDrag(e) {
+    e.preventDefault();
+    const { x, y } = getPointerPos(e);
+
     if (
-      x >= duck.x &&
-      x <= duck.x + duck.width &&
-      y >= duck.y &&
-      y <= duck.y + duck.height
+      x >= sponge.x &&
+      x <= sponge.x + sponge.width &&
+      y >= sponge.y &&
+      y <= sponge.y + sponge.height
     ) {
-      dragTarget = duck;
-      offsetX = x - duck.x;
-      offsetY = y - duck.y;
-      duck.grabbed = true;
-      duck.vy = 0; // stop gravity while held
+      dragTarget = sponge;
+      offsetX = x - sponge.x;
+      offsetY = y - sponge.y;
+      sponge.dragging = true;
       return;
     }
-  }
-}
 
-function moveDrag(e) {
-  if (!dragTarget) return;
-  e.preventDefault();
-  const { x, y } = getPointerPos(e);
-  dragTarget.x = x - offsetX;
-  dragTarget.y = y - offsetY;
-}
-
-function stopDrag() {
-  if (!dragTarget) return;
-  if (dragTarget === sponge) {
-    sponge.dragging = false;
-  } else if (dragTarget.grabbed) {
-    dragTarget.grabbed = false;
-    dragTarget.vy = 0; // gravity restarts next frame
-  }
-  dragTarget = null;
-}
-
-function handleTap(e) {
-  const { x, y } = getPointerPos(e);
-  duckies.forEach((duck) => {
-    if (
-      x >= duck.x &&
-      x <= duck.x + duck.width &&
-      y >= duck.y &&
-      y <= duck.y + duck.height
-    ) {
-      const quack = new Audio("quack.mp3");
-      quack.volume = 0.8;
-      quack.playbackRate = 0.9 + Math.random() * 0.2;
-      quack.play().catch(() => {});
+    for (let i = duckies.length - 1; i >= 0; i--) {
+      const duck = duckies[i];
+      if (
+        x >= duck.x &&
+        x <= duck.x + duck.width &&
+        y >= duck.y &&
+        y <= duck.y + duck.height
+      ) {
+        dragTarget = duck;
+        offsetX = x - duck.x;
+        offsetY = y - duck.y;
+        duck.grabbed = true;
+        duck.vy = 0;
+        return;
+      }
     }
-  });
-}
+  }
 
-// Mouse + Touch listeners
-["mousedown", "touchstart"].forEach(ev =>
-  canvas.addEventListener(ev, startDrag, { passive: false })
-);
-["mousemove", "touchmove"].forEach(ev =>
-  canvas.addEventListener(ev, moveDrag, { passive: false })
-);
-["mouseup", "touchend"].forEach(ev =>
-  canvas.addEventListener(ev, stopDrag, { passive: false })
-);
-canvas.addEventListener("click", handleTap);
+  function moveDrag(e) {
+    if (!dragTarget) return;
+    e.preventDefault();
+    const { x, y } = getPointerPos(e);
+    dragTarget.x = x - offsetX;
+    dragTarget.y = y - offsetY;
+  }
+
+  function stopDrag() {
+    if (!dragTarget) return;
+    if (dragTarget === sponge) {
+      sponge.dragging = false;
+    } else if (dragTarget.grabbed) {
+      dragTarget.grabbed = false;
+      dragTarget.vy = 0;
+    }
+    dragTarget = null;
+  }
+
+  function handleTap(e) {
+    const { x, y } = getPointerPos(e);
+    duckies.forEach((duck) => {
+      if (
+        x >= duck.x &&
+        x <= duck.x + duck.width &&
+        y >= duck.y &&
+        y <= duck.y + duck.height
+      ) {
+        const quack = new Audio("quack.mp3");
+        quack.volume = 0.8;
+        quack.playbackRate = 0.9 + Math.random() * 0.2;
+        playSafeSound(quack);
+      }
+    });
+  }
+
+  ["mousedown", "touchstart"].forEach((ev) =>
+    canvas.addEventListener(ev, startDrag, { passive: false })
+  );
+  ["mousemove", "touchmove"].forEach((ev) =>
+    canvas.addEventListener(ev, moveDrag, { passive: false })
+  );
+  ["mouseup", "touchend"].forEach((ev) =>
+    canvas.addEventListener(ev, stopDrag, { passive: false })
+  );
+  canvas.addEventListener("click", handleTap);
+
   // ===========================================================
-  // 🧩 CUSTOMIZABLE HITBOX SETTINGS
+  // 🧩 HITBOX
   // ===========================================================
   const hitbox = {
-    type: "rect", // "rect" or "circle"
+    type: "rect",
     offsetX: 120,
     offsetY: 90,
     width: 130,
@@ -223,15 +228,15 @@ canvas.addEventListener("click", handleTap);
   // 🪄 UPDATE LOOP
   // ===========================================================
   let running = true;
+  let raf = 0;
   function update() {
     if (!running) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Base
     if (baseImage.complete && baseImage.naturalWidth > 0)
       ctx.drawImage(baseImage, petX, petY, 400, 400);
 
-    // Sponge (wobble while dragging)
+    // Sponge
     if (sponge.img.complete && sponge.img.naturalWidth > 0) {
       ctx.save();
       if (sponge.dragging) {
@@ -251,24 +256,20 @@ canvas.addEventListener("click", handleTap);
       ctx.restore();
     }
 
-  // ✨ Sponge hitting or leaving pet hitbox
-const touching = isTouchingHitbox(sponge);
+    // Touch logic
+    const touching = isTouchingHitbox(sponge);
+    if (touching && !baseImage.src.includes("base_bath2.png")) {
+      baseImage.src = "base_bath2.png";
+      if (!sponge.img.src.includes("sponge.png")) {
+        playSafeSound(splashSound);
+      }
+    } else if (!touching && !baseImage.src.includes("base_bath.png")) {
+      baseImage.src = "base_bath.png";
+    }
 
-if (touching && !baseImage.src.includes("base_bath2.png")) {
-  // when first touches
-  baseImage.src = "base_bath2.png";
-  try {
-    splashSound.currentTime = 0;
-    splashSound.play().catch(() => {});
-  } catch {}
-} else if (!touching && !baseImage.src.includes("base_bath.png")) {
-  // when sponge leaves
-  baseImage.src = "base_bath.png";
-}
-    // 🟢 Draw hitbox outline (for tuning)
     drawHitbox();
 
-    // 🐤 Ducks physics
+    // Ducks
     duckies.forEach((duck) => {
       if (!duck.grabbed) {
         duck.vy += 0.5;
@@ -282,7 +283,7 @@ if (touching && !baseImage.src.includes("base_bath2.png")) {
         ctx.drawImage(duckImg, duck.x, duck.y, duck.width, duck.height);
     });
 
-    requestAnimationFrame(update);
+    raf = requestAnimationFrame(update);
   }
 
   function isTouching(a, b) {
@@ -302,12 +303,21 @@ if (touching && !baseImage.src.includes("base_bath2.png")) {
   update();
 
   // ===========================================================
-  // CLEANUP WHEN MODE CHANGES
+  // 🧹 CLEANUP WHEN MODE CHANGES (no leftover hitbox)
   // ===========================================================
-  window._modeCleanup = function () {
-    running = false;
-    spawnDuckBtn.remove();
-    // easiest safe cleanup: replace canvas node to remove all listeners
-    canvas.replaceWith(canvas.cloneNode(true));
-  };
+window._modeCleanup = function () {
+  running = false;
+  cancelAnimationFrame(raf);
+  spawnDuckBtn?.remove();
+
+  // 🧹 stop all cloned sounds (splash / quack)
+  if (window.SoundManager) SoundManager.stopAll();
+
+  // clear any hitbox or drawing
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // safely remove listeners by replacing canvas
+  const newCanvas = canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(newCanvas, canvas);
+};
 })();
