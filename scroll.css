@@ -1,0 +1,96 @@
+/* === UNIVERSAL SCROLL BAR STYLE === */
+.combined-scroll-bar,
+#presetScrollBar,
+#categoryScrollBar,
+.scrollable-buttons {
+	display: flex;
+	overflow-x: auto;
+	white-space: nowrap;
+	gap: 8px;
+	padding: 10px;
+	margin: 0;                 /* 🔹 remove default margin */
+	width: 90%;
+	max-width: 600px;
+	border: 2px solid #ccc;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.85);
+	scroll-behavior: smooth;
+	cursor: grab;
+	box-sizing: border-box;
+}
+
+/* 🔹 Ensure bars stack tightly without space below */
+.combined-scroll-bar + .combined-scroll-bar,
+#presetScrollBar + #categoryScrollBar,
+#categoryScrollBar + .scrollable-buttons {
+	margin-top: 8px;          /* small spacing *between* bars only */
+	margin-bottom: 0;         /* no space below */
+}
+
+.scrollable-buttons {
+	margin-bottom: 0 !important; /* 🔹 absolutely no gap below */
+	padding-bottom: 8px;         /* slight internal padding for button spacing */
+}
+
+/* Hide scrollbars */
+.combined-scroll-bar::-webkit-scrollbar,
+#presetScrollBar::-webkit-scrollbar,
+#categoryScrollBar::-webkit-scrollbar,
+.scrollable-buttons::-webkit-scrollbar {
+	display: none;
+}
+
+/* === BUTTONS INSIDE SCROLL AREAS === */
+.combined-scroll-bar button,
+#presetScrollBar button,
+#categoryScrollBar button,
+.scrollable-buttons button {
+	flex: 0 0 auto;
+	margin: 5px;
+	padding: 10px 15px;
+	font-size: 14px;
+	cursor: pointer;
+	border: none;
+	background-color: #6200ea;
+	color: #fff;
+	border-radius: 6px;
+	transition: background 0.3s, transform 0.15s ease;
+}
+
+.combined-scroll-bar button:hover,
+#presetScrollBar button:hover,
+#categoryScrollBar button:hover,
+.scrollable-buttons button:hover {
+	background-color: #3700b3;
+	transform: scale(1.05);
+}
+
+/* Active state */
+.combined-scroll-bar:active,
+#presetScrollBar:active,
+#categoryScrollBar:active,
+.scrollable-buttons:active {
+	cursor: grabbing;
+}
+
+/* === MOBILE ADJUSTMENTS === */
+@media (max-width: 600px) {
+	.combined-scroll-bar,
+	#presetScrollBar,
+	#categoryScrollBar,
+	.scrollable-buttons {
+		width: 95%;
+		max-width: 100vw;
+		gap: 6px;
+		padding: 8px;
+		margin: 0;
+	}
+
+	.combined-scroll-bar button,
+	#presetScrollBar button,
+	#categoryScrollBar button,
+	.scrollable-buttons button {
+		padding: 8px 12px;
+		font-size: 13px;
+	}
+}
