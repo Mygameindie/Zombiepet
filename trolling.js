@@ -1,4 +1,4 @@
-// trolling.js — Hammer + Butter + Remove Mode + Sound
+// trolling.js — Hammer + Butter + Remove + Watering Can + Sound + Drag Hitbox
 (() => {
   window._modeName = "trolling";
 
@@ -31,6 +31,8 @@
   // === Sounds ===
   const hammerSound = new Audio("hammer.mp3");
   const butterSound = new Audio("butter.mp3");
+  const waterSound = new Audio("water.mp3");
+  waterSound.loop = true; // loop water sound while touching
 
   function playSound(audio) {
     try {
@@ -68,7 +70,6 @@
       baseImage.src = "base.png";
     };
 
-    // Mouse + touch support
     hammerBtn.addEventListener("mousedown", press);
     hammerBtn.addEventListener("touchstart", press);
     hammerBtn.addEventListener("mouseup", release);
@@ -88,7 +89,97 @@
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
       baseImage.src = "base.png";
+      waterSound.pause();
+      waterSound.currentTime = 0;
     });
+  }
+
+  // === WATERING CAN ===
+  const wateringCan = new Image();
+  wateringCan.src = "wateringcan.png";
+  const can = {
+    x: 100,
+    y: 100,
+    w: 120,
+    h: 120,
+    dragging: false,
+    offsetX: 0,
+    offsetY: 0,
+  };
+
+  let touchingPet = false;
+
+  function isHit(a, b) {
+    return (
+      a.x < b.x + b.w &&
+      a.x + a.w > b.x &&
+      a.y < b.y + b.h &&
+      a.y + a.h > b.y
+    );
+  }
+
+  // === Mouse/Touch Drag for Watering Can ===
+  function getPointerPos(e) {
+    if (e.touches && e.touches[0])
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  canvas.addEventListener("mousedown", startDrag);
+  canvas.addEventListener("touchstart", startDrag);
+  canvas.addEventListener("mousemove", dragMove);
+  canvas.addEventListener("touchmove", dragMove);
+  canvas.addEventListener("mouseup", endDrag);
+  canvas.addEventListener("mouseleave", endDrag);
+  canvas.addEventListener("touchend", endDrag);
+
+  function startDrag(e) {
+    const pos = getPointerPos(e);
+    if (
+      pos.x >= can.x &&
+      pos.x <= can.x + can.w &&
+      pos.y >= can.y &&
+      pos.y <= can.y + can.h
+    ) {
+      can.dragging = true;
+      can.offsetX = pos.x - can.x;
+      can.offsetY = pos.y - can.y;
+    }
+  }
+
+  function dragMove(e) {
+    if (!can.dragging) return;
+    const pos = getPointerPos(e);
+    can.x = pos.x - can.offsetX;
+    can.y = pos.y - can.offsetY;
+
+    const hit = isHit(can, pet);
+
+    if (hit && !touchingPet) {
+      baseImage.src = "base_wet.png";
+      waterSound.currentTime = 0;
+      waterSound.play().catch(() => {});
+      touchingPet = true;
+    } else if (!hit && touchingPet) {
+      waterSound.pause();
+      waterSound.currentTime = 0;
+      touchingPet = false;
+    }
+
+    e.preventDefault();
+  }
+
+  function endDrag() {
+    if (can.dragging) {
+      can.dragging = false;
+      // Stop sound if still playing
+      waterSound.pause();
+      waterSound.currentTime = 0;
+      touchingPet = false;
+      // Snap back to original position
+      can.x = 100;
+      can.y = 100;
+    }
   }
 
   // === DRAW LOOP ===
@@ -105,6 +196,10 @@
     if (baseImage.complete && baseImage.naturalWidth > 0)
       ctx.drawImage(baseImage, pet.x, pet.y, pet.w, pet.h);
 
+    // watering can (always visible)
+    if (wateringCan.complete && wateringCan.naturalWidth > 0)
+      ctx.drawImage(wateringCan, can.x, can.y, can.w, can.h);
+
     requestAnimationFrame(draw);
   }
   draw();
@@ -114,5 +209,7 @@
     running = false;
     if (uiBox) uiBox.remove();
     window.removeEventListener("resize", resizeCanvas);
+    waterSound.pause();
+    waterSound.currentTime = 0;
   };
 })();
