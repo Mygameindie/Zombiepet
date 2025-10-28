@@ -70,6 +70,10 @@ if (!window.SoundManager) {
   document.getElementById('normal-btn').addEventListener('click', () => {
     loadMode('pet_script.js', 'Normal Mode');
   });
+    // 🎤 New Karaoke Mode
+  document.getElementById('karaoke-btn').addEventListener('click', () => {
+    loadMode('music.js', 'Karaoke Mode');
+  });
 
   document.getElementById('feed-btn').addEventListener('click', () => {
     loadMode('pet_multi_feed.js', 'Feeding Mode');
