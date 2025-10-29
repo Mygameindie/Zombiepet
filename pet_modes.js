@@ -88,6 +88,11 @@ if (!window.SoundManager) {
     loadMode('trolling.js', 'Trolling Mode');
   });
 
+    // 😴 New Sleep Mode
+  document.getElementById('sleep-btn').addEventListener('click', () => {
+    loadMode('pet_sleep.js', 'Sleep Mode');
+  });
+  
   // Auto-load Normal on first open
   loadMode('pet_script.js', 'Normal Mode');
 })();
