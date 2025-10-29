@@ -44,7 +44,7 @@
 
   // === Bed ===
   const bed = {
-    x: 600, // adjust for your layout
+    x: 400, // adjust for your layout
     y: canvas.height - 300,
     w: 400,
     h: 400,
@@ -53,8 +53,8 @@
 
   // === Blanket ===
   const blanket = {
-    x: bed.x - 400,
-    y: bed.y - 200,
+    x: bed.x - 200,
+    y: bed.y - 100,
     w: 100,
     h: 100,
     visible: false,
