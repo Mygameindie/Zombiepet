@@ -44,7 +44,7 @@
 
   // === Bed ===
   const bed = {
-    x: 400, // adjust for your layout
+    x: 400, // 🛏️ Left side
     y: canvas.height - 300,
     w: 400,
     h: 400,
@@ -77,9 +77,10 @@
     return { x, y };
   }
 
-  // === Pet Drag ===
+  // === Drag Start ===
   function startDrag(e) {
     const p = getPos(e);
+
     // Pet drag start
     if (
       pet.visible &&
@@ -107,6 +108,7 @@
     }
   }
 
+  // === Drag Move ===
   function moveDrag(e) {
     const p = getPos(e);
     if (pet.dragging) {
@@ -118,6 +120,7 @@
     }
   }
 
+  // === Drag End ===
   function endDrag() {
     // === PET DROP ===
     if (pet.dragging) {
@@ -130,8 +133,9 @@
       const overlapX =
         Math.abs(pet.x - bed.x) < (pet.w / 2 + bed.w / 2) * 0.6;
       const overlapY = petBottom > bedTop && petBottom < bed.y + bed.h / 2;
+
       if (overlapX && overlapY) {
-        bed.state = "preSleep"; // show bed_sleep1
+        bed.state = "preSleep"; // bed_sleep1
         blanket.visible = true;
         pet.visible = false;
         vy = 0;
@@ -142,6 +146,7 @@
     // === BLANKET DROP ===
     if (blanket.dragging) {
       blanket.dragging = false;
+
       const overlapX =
         Math.abs(blanket.x - bed.x) < (blanket.w / 2 + bed.w / 2) * 0.6;
       const overlapY =
@@ -150,48 +155,58 @@
       if (overlapX && overlapY && bed.state === "preSleep") {
         blanket.visible = false;
         bed.state = "sleeping"; // bed_sleep2
+
+        // 🕒 Block clicks briefly (prevent double-click)
+        window._sleepClickBlocked = true;
+        setTimeout(() => {
+          window._sleepClickBlocked = false;
+        }, 100); // 0.1s delay
       }
     }
   }
 
-// === Click to wake up ===
-canvas.addEventListener("click", (e) => {
-  const p = getPos(e);
-  const bedLeft = bed.x - bed.w / 2;
-  const bedRight = bed.x + bed.w / 2;
-  const bedTop = bed.y - bed.h / 2;
-  const bedBottom = bed.y + bed.h / 2;
+  // === Click to wake up ===
+  canvas.addEventListener("click", (e) => {
+    if (window._sleepClickBlocked) return; // 🚫 Ignore fast double clicks
 
-  if (
-    bed.state === "sleeping" &&
-    p.x > bedLeft &&
-    p.x < bedRight &&
-    p.y > bedTop &&
-    p.y < bedBottom
-  ) {
-    // 💤 Wake up logic
-    bed.state = "normal";        // back to normal bed
-    pet.visible = true;          // show pet again
-    blanket.visible = true;      // show blanket again
+    const p = getPos(e);
+    const bedLeft = bed.x - bed.w / 2;
+    const bedRight = bed.x + bed.w / 2;
+    const bedTop = bed.y - bed.h / 2;
+    const bedBottom = bed.y + bed.h / 2;
 
-    // 🐾 Pet and 🧣 Blanket both appear at left side of bed
-    const leftOffset = 120; // adjust this distance if needed
+    if (
+      bed.state === "sleeping" &&
+      p.x > bedLeft &&
+      p.x < bedRight &&
+      p.y > bedTop &&
+      p.y < bedBottom
+    ) {
+      // 💤 Wake up logic
+      bed.state = "normal"; // back to normal bed
+      pet.visible = true;
+      blanket.visible = true;
 
-    pet.x = bed.x - bed.w / 2 - pet.w / 2 - leftOffset;
-    pet.y = bed.y - bed.h / 2 - pet.h / 2;
+      // 🐾 Pet & 🧣 Blanket both appear at left side of bed
 
-    blanket.x = bed.x - bed.w / 2 - blanket.w / 2 - leftOffset / 2;
-    blanket.y = bed.y - bed.h / 2 + 50; // slightly lower than pet
 
-    // reset velocity
-    vy = 0;
-    vx = 0;
-    pet.oldx = pet.x;
-    pet.oldy = pet.y;
-  }
-});
+      // 🐾 Pet & 🧣 Blanket both appear at right side of bed
+const rightOffset = 120; // adjust if needed
 
-  // === Event listeners ===
+pet.x = bed.x + bed.w / 2 + pet.w / 2 + rightOffset;
+pet.y = bed.y - bed.h / 2 - pet.h / 2;
+
+blanket.x = bed.x + bed.w / 2 + blanket.w / 2 + rightOffset / 2;
+blanket.y = bed.y - bed.h / 2 + 50; // slightly lower than pet
+
+      vy = 0;
+      vx = 0;
+      pet.oldx = pet.x;
+      pet.oldy = pet.y;
+    }
+  });
+
+  // === Event Listeners ===
   canvas.addEventListener("mousedown", startDrag);
   canvas.addEventListener("mousemove", moveDrag);
   canvas.addEventListener("mouseup", endDrag);
@@ -207,7 +222,7 @@ canvas.addEventListener("click", (e) => {
   }
   window.addEventListener("resize", onResize);
 
-  // === Physics ===
+  // === Physics Update ===
   function update() {
     if (!pet.visible || bed.state !== "normal") return;
 
@@ -223,6 +238,7 @@ canvas.addEventListener("click", (e) => {
       pet.x += vx;
       pet.y += vy;
 
+      // floor collision
       if (pet.y + pet.h / 2 >= groundY) {
         pet.y = groundY - pet.h / 2;
         if (Math.abs(vy) > MIN_IMPACT) vy = -vy * 0.25;
@@ -231,7 +247,7 @@ canvas.addEventListener("click", (e) => {
     }
   }
 
-  // === Draw helpers ===
+  // === Draw Helpers ===
   function safeDraw(img, x, y, w, h) {
     if (!img || !img.complete || img.naturalWidth === 0) return;
     try {
@@ -265,7 +281,7 @@ canvas.addEventListener("click", (e) => {
     safeDraw(img, pet.x - pet.w / 2, pet.y - pet.h / 2, pet.w, pet.h);
   }
 
-  // === Loop ===
+  // === Main Loop ===
   let raf = 0;
   function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
