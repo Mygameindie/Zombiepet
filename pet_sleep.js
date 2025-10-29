@@ -44,7 +44,7 @@
 
   // === Bed ===
   const bed = {
-    x: 400, // 🛏️ Left side
+    x: 650, // 🛏️ Left side
     y: canvas.height - 300,
     w: 400,
     h: 400,
@@ -53,7 +53,7 @@
 
   // === Blanket ===
   const blanket = {
-    x: bed.x - 200,
+    x: bed.x - 40,
     y: bed.y - 100,
     w: 100,
     h: 100,
@@ -165,46 +165,43 @@
     }
   }
 
-  // === Click to wake up ===
-  canvas.addEventListener("click", (e) => {
-    if (window._sleepClickBlocked) return; // 🚫 Ignore fast double clicks
+ // === Click to wake up ===
+canvas.addEventListener("click", (e) => {
+  if (window._sleepClickBlocked) return; // 🚫 Ignore fast double clicks
 
-    const p = getPos(e);
-    const bedLeft = bed.x - bed.w / 2;
-    const bedRight = bed.x + bed.w / 2;
-    const bedTop = bed.y - bed.h / 2;
-    const bedBottom = bed.y + bed.h / 2;
+  const p = getPos(e);
+  const bedLeft = bed.x - bed.w / 2;
+  const bedRight = bed.x + bed.w / 2;
+  const bedTop = bed.y - bed.h / 2;
+  const bedBottom = bed.y + bed.h / 2;
 
-    if (
-      bed.state === "sleeping" &&
-      p.x > bedLeft &&
-      p.x < bedRight &&
-      p.y > bedTop &&
-      p.y < bedBottom
-    ) {
-      // 💤 Wake up logic
-      bed.state = "normal"; // back to normal bed
-      pet.visible = true;
-      blanket.visible = true;
+  if (
+    bed.state === "sleeping" &&
+    p.x > bedLeft &&
+    p.x < bedRight &&
+    p.y > bedTop &&
+    p.y < bedBottom
+  ) {
+    // 💤 Wake up logic
+    bed.state = "normal"; // back to normal bed
+    pet.visible = true;
+    blanket.visible = true;
 
-      // 🐾 Pet & 🧣 Blanket both appear at left side of bed
+    // 🐾 Pet & 🧣 Blanket appear centered on bed
+    pet.x = bed.x; // centered horizontally
+    pet.y = bed.y - bed.h / 2 - pet.h / 2; // slightly above bed top
 
+    blanket.x = bed.x; // centered horizontally
+    blanket.y = bed.y - bed.h / 2 + 50; // a bit lower than pet
 
-      // 🐾 Pet & 🧣 Blanket both appear at right side of bed
-const rightOffset = 120; // adjust if needed
+    // reset motion
+    vx = 0;
+    vy = 0;
+    pet.oldx = pet.x;
+    pet.oldy = pet.y;
+  }
+});
 
-pet.x = bed.x + bed.w / 2 + pet.w / 2 + rightOffset;
-pet.y = bed.y - bed.h / 2 - pet.h / 2;
-
-blanket.x = bed.x + bed.w / 2 + blanket.w / 2 + rightOffset / 2;
-blanket.y = bed.y - bed.h / 2 + 50; // slightly lower than pet
-
-      vy = 0;
-      vx = 0;
-      pet.oldx = pet.x;
-      pet.oldy = pet.y;
-    }
-  });
 
   // === Event Listeners ===
   canvas.addEventListener("mousedown", startDrag);
