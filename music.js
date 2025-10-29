@@ -1,5 +1,5 @@
 // ===========================================================
-// 🎤 ONE-CLICK KARAOKE MODE + ⏸️ Pause/Resume Button (fixed)
+// 🎤 ONE-CLICK KARAOKE MODE + AUTO CANCEL ON MODE CHANGE (fixed upload)
 // ===========================================================
 (() => {
   const canvas = document.getElementById("canvas");
@@ -54,9 +54,11 @@
   // === Dance animation ===
   function drawPet() {
     if (!animationRunning || loaded < total) {
-      requestAnimationFrame(drawPet);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawIdle();
       return;
     }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const scale = 0.3;
     const imgWidth = currentBase.width * scale;
@@ -64,7 +66,8 @@
     const x = (canvas.width - imgWidth) / 2;
     const y = canvas.height - imgHeight - 100;
     ctx.drawImage(currentBase, x, y, imgWidth, imgHeight);
-    requestAnimationFrame(drawPet);
+
+    if (animationRunning) requestAnimationFrame(drawPet);
   }
 
   // === Upload input ===
@@ -117,34 +120,39 @@
   });
   document.body.appendChild(pauseBtn);
 
-  // === Karaoke button (now one-click safe) ===
+  // === Karaoke button (one-click safe upload) ===
   const karaokeBtn = document.getElementById("karaoke-btn");
   karaokeBtn.addEventListener("click", () => {
     if (isPlaying) return;
-
-    window._modeName = "karaoke";
     currentMode = "karaoke";
     drawIdle();
-
-    // ✅ Immediately open file picker under the same gesture
-    uploadInput.click();
+    uploadInput.click(); // ✅ open file picker under same gesture
   });
 
-  // === Stop karaoke ===
+  // === Stop karaoke (stop all music + animation) ===
   function stopKaraoke() {
     if (mediaPlayer) {
-      mediaPlayer.pause();
+      try {
+        mediaPlayer.pause();
+        mediaPlayer.currentTime = 0;
+      } catch (e) {}
+      mediaPlayer.src = "";
       mediaPlayer.remove();
       mediaPlayer = null;
     }
+
     clearInterval(animationInterval);
     clearInterval(progressUpdater);
+    animationInterval = null;
+    progressUpdater = null;
+    animationRunning = false;
+    toggle = false;
+
     progressContainer.style.display = "none";
     progressBar.style.width = "0%";
     pauseBtn.style.display = "none";
-    animationRunning = false;
+
     currentBase = musicBase1;
-    toggle = false;
     isPlaying = false;
     isPaused = false;
     drawIdle();
@@ -164,20 +172,57 @@
     }
   });
 
-  // === Detect mode change ===
-  setInterval(() => {
-    if (currentMode === "karaoke" && window._modeName !== "karaoke") {
+  // === Detect mode change (instant auto-stop for all buttons) ===
+let _modeNameValue = window._modeName || "none";
+Object.defineProperty(window, "_modeName", {
+  get() {
+    return _modeNameValue;
+  },
+  set(value) {
+    const old = _modeNameValue;
+    _modeNameValue = value;
+    if (old === "karaoke" && value !== "karaoke") {
       stopKaraoke();
+      uploadInput.value = "";
+    }
+    currentMode = value;
+  },
+});
+
+// ✅ Also catch any click on other mode buttons
+document.addEventListener("click", (e) => {
+  // If a button changes mode, stop karaoke
+  if (
+    currentMode === "karaoke" &&
+    e.target &&
+    e.target.id &&
+    e.target.id !== "karaoke-btn"
+  ) {
+    // common mode button ids you might have
+    const id = e.target.id.toLowerCase();
+    if (
+      id.includes("feed") ||
+      id.includes("troll") ||
+      id.includes("bath") ||
+      id.includes("dance") ||
+      id.includes("game") ||
+      id.includes("normal") ||
+      id.includes("mode") // fallback for anything with 'mode'
+    ) {
+      stopKaraoke();
+      uploadInput.value = "";
+      window._modeName = id.replace("-btn", "");
       currentMode = window._modeName;
     }
-  }, 300);
+  }
+});
 
-  // === File chosen — autoplay-safe, no double tap ===
+  // === File chosen — autoplay-safe ===
   uploadInput.addEventListener("change", async e => {
     const file = e.target.files[0];
     if (!file || isPlaying) return;
 
-    stopKaraoke();
+    stopKaraoke(); // clean start
     isPlaying = true;
 
     const url = URL.createObjectURL(file);
@@ -211,11 +256,10 @@
       progressBar.style.width = `${percent}%`;
     }, 100);
 
-    // ✅ Try to play immediately (keeps gesture context)
+    // ✅ Try to play immediately
     try {
       await mediaPlayer.play();
     } catch (err) {
-
       const overlay = document.createElement("div");
       overlay.textContent = "🎬 Tap to start playback";
       Object.assign(overlay.style, {
