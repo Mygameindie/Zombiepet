@@ -1,47 +1,58 @@
-
+/* === GLOBAL SCALING SYSTEM (Improved for all screens & orientations) === */
+:root {
+  /* Scale UI based on smaller dimension (width or height) */
+  --ui-scale: clamp(0.6, min(100vw, 100vh) / 900, 1.2);
 }
 
-/* Basic layout */
-* { box-sizing: border-box; }
+/* === Responsive Layout Reset === */
 html, body {
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-}
-canvas {
-  display: block;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(#cceeff, #a7ddff);
-  touch-action: none; /* prevent scroll on mobile */
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-/* UI overlay */
+/* === Canvas full screen and adaptive === */
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(#cceeff, #a7ddff);
+  touch-action: none;
+}
+
+/* === UI overlay (pet HUD, cards, etc.) === */
 #ui {
   position: fixed;
   inset: 0;
-  pointer-events: none; /* let canvas receive drags */
+  pointer-events: none;
   transform: scale(var(--ui-scale));
-  transform-origin: center bottom; /* scales from bottom center */
+  transform-origin: center bottom;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
 }
 
-/* === Cards === */
+/* === Cards at bottom === */
 .card {
   pointer-events: auto;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(18px * var(--ui-scale));
-  background: rgba(255,255,255,0.9);
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;
   padding: calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   display: flex;
   gap: calc(8px * var(--ui-scale));
   align-items: center;
   justify-content: center;
   font-size: calc(16px * var(--ui-scale));
+  backdrop-filter: blur(4px);
 }
 
 .card.small {
@@ -108,44 +119,38 @@ canvas {
   display: none;
 }
 
-/* === GLOBAL SCALING SYSTEM === */
-:root {
-  /* Dynamically adjust scale factor between 0.7 and 1.2 depending on screen width */
-  --ui-scale: clamp(0.7, 100vw / 1280, 1.2);
-  
-  /* === Feed scroll bar === */
-#spawn-buttons {
-  position: fixed;
-  top: 50%;
-  left: 20px;
-  transform: translateY(-50%);
-  z-index: 999;
+/* === Ensure UI never overlaps top scroll bar === */
+body {
+  padding-top: calc(110px * var(--ui-scale)); /* space for scroll bar on top */
 }
 
-.scroll-bar {
-  width: 130px;
-  height: 280px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: rgba(255,255,255,0.85);
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  scrollbar-width: thin;
+/* === Orientation handling === */
+@media (orientation: portrait) {
+  #stats {
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 60vw;
+  }
+  .card {
+    width: 90vw;
+    flex-wrap: wrap;
+  }
 }
 
-.scroll-bar button {
-  appearance: none;
-  border: 0;
-  padding: 8px;
-  border-radius: 8px;
-  background: white;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background 0.2s ease;
+@media (orientation: landscape) {
+  .card {
+    width: auto;
+  }
 }
-.scroll-bar button:hover {
-  background: #fff2d1;
+
+/* === Mobile-safe tweaks === */
+@media (max-width: 600px) {
+  .card {
+    font-size: calc(14px * var(--ui-scale));
+    padding: calc(8px * var(--ui-scale));
+    gap: calc(6px * var(--ui-scale));
+  }
+  #stats {
+    font-size: calc(12px * var(--ui-scale));
+  }
 }
