@@ -207,6 +207,7 @@ document.addEventListener("click", (e) => {
       id.includes("dance") ||
       id.includes("game") ||
       id.includes("normal") ||
+	  id.includes("sleep") ||
       id.includes("mode") // fallback for anything with 'mode'
     ) {
       stopKaraoke();
