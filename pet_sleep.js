@@ -34,8 +34,7 @@
   imgs.fish.src = "food1.png";
   imgs.food.src = "food.png"; // optional generic food
 
-  // === Duck Sound ===
-  const duckSound = new Audio("quack.mp3"); // provide your own file
+  
 
   // === Pet ===
   const pet = {
