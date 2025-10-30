@@ -303,9 +303,10 @@
     spawnButtons.style.zIndex = "999";
     spawnButtons.innerHTML = `
       <button id="spawnFish">🐟 Fish</button>
+	        <button id="spawnBrain">🧠 Brain</button>
       <button id="spawngarlic">🧄 Garlic</button>
       <button id="spawnicelettuce">🥬 Ice Lettuce</button>
-      <button id="spawnBrain">🧠 Brain</button>
+
       <button id="spawnDuck">🦆 Duck</button>
       <button id="spawncandy">🍬 Candy</button>
       <button id="spawnSpicy">🌶️ Spicy</button>
