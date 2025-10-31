@@ -1,5 +1,5 @@
 // ===========================================================
-// 😴 pet_sleep.js — Sleep Mode + Feed Buttons (food, duck, fish)
+// 😴 pet_sleep.js — Sleep Mode + Feed Buttons (food, duck, fish, conehead)
 // ===========================================================
 (function () {
   const canvas = document.getElementById("canvas");
@@ -20,6 +20,7 @@
     duck: new Image(),
     fish: new Image(),
     food: new Image(),
+    conehead: new Image(),
   };
 
   imgs.stand.src = "base.png";
@@ -31,10 +32,30 @@
   imgs.bedSleep2.src = "bed_sleep2.png";
   imgs.blanket1.src = "blanket1.png";
   imgs.duck.src = "duck.png";
-  imgs.fish.src = "food1.png";
-  imgs.food.src = "food.png"; // optional generic food
+  imgs.fish.src = "food1.png"; // ✅ fixed
+  imgs.food.src = "food.png";
+  imgs.conehead.src = "conehead.png";
 
-  
+  // === Sounds (Duck Quack) ===
+  const QUACK_SRC = "quack.mp3";
+  function playQuack(volume = 0.85) {
+    const a = new Audio(QUACK_SRC);
+    a.preload = "auto";
+    a.volume = volume;
+    a.play().catch(() => {});
+  }
+
+  // Unlock audio for iOS
+  function unlockAudioOnce() {
+    const a = new Audio(QUACK_SRC);
+    a.muted = true;
+    a.play().then(() => {
+      a.pause();
+      a.currentTime = 0;
+      a.muted = false;
+    }).catch(() => {});
+  }
+  window.addEventListener("pointerdown", unlockAudioOnce, { once: true });
 
   // === Pet ===
   const pet = {
@@ -78,16 +99,15 @@
   const MIN_IMPACT = 1.5;
 
   // === Food items ===
-  const foods = []; // {x, y, w, h, vy, type, eaten}
+  const foods = [];
   function spawnFood(type = "food") {
-    // 🦆🐟 custom sizes
-const sizeMap = {
-  food: { w: 80, h: 80 },
-  duck: { w: 130, h: 130 },
-  fish: { w: 130, h: 75 },
-};
-const { w, h } = sizeMap[type] || { w: 80, h: 80 };
-
+    const sizeMap = {
+      food: { w: 80, h: 80 },
+      duck: { w: 130, h: 130 },
+      fish: { w: 130, h: 75 },
+      conehead: { w: 200, h: 350 },
+    };
+    const { w, h } = sizeMap[type] || { w: 80, h: 80 };
     const f = {
       x: Math.random() * (canvas.width - 200) + 100,
       y: -50,
@@ -100,13 +120,8 @@ const { w, h } = sizeMap[type] || { w: 80, h: 80 };
     };
     foods.push(f);
 
-    // play duck quack immediately when dropping
-    if (type === "duck") {
-      try {
-        duckSound.currentTime = 0;
-        duckSound.play();
-      } catch (_) {}
-    }
+    // 🦆 Quack immediately when duck spawns
+    if (type === "duck") playQuack();
   }
 
   // === UI: Food Buttons ===
@@ -149,7 +164,7 @@ const { w, h } = sizeMap[type] || { w: 80, h: 80 };
 
   makeBtn("🦆 Duck", "duck");
   makeBtn("🐟 Fish", "fish");
-
+  makeBtn("🧠 Conehead", "conehead");
 
   // === Helpers ===
   function getPos(e) {
@@ -298,13 +313,10 @@ const { w, h } = sizeMap[type] || { w: 80, h: 80 };
       f.vy += gravity * 0.5;
       f.y += f.vy;
 
-      // 🦆 Quack when duck lands (only once)
+      // 🦆 Quack when duck lands
       if (f.type === "duck" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
         f.soundPlayed = true;
-        try {
-          duckSound.currentTime = 0;
-          duckSound.play();
-        } catch (_) {}
+        playQuack();
       }
 
       if (f.y + f.h / 2 >= groundY) {
@@ -312,7 +324,7 @@ const { w, h } = sizeMap[type] || { w: 80, h: 80 };
         f.vy = 0;
       }
 
-      // 🍽️ Eat collision
+      // 🍴 Eat collision
       if (
         pet.visible &&
         Math.abs(pet.x - f.x) < (pet.w + f.w) / 2 - 40 &&
@@ -361,7 +373,13 @@ const { w, h } = sizeMap[type] || { w: 80, h: 80 };
     for (const f of foods) {
       if (f.eaten) continue;
       const img =
-        f.type === "duck" ? imgs.duck : f.type === "fish" ? imgs.fish : imgs.food;
+        f.type === "duck"
+          ? imgs.duck
+          : f.type === "fish"
+          ? imgs.fish
+          : f.type === "conehead"
+          ? imgs.conehead
+          : imgs.food;
       safeDraw(img, f.x - f.w / 2, f.y - f.h / 2, f.w, f.h);
     }
   }

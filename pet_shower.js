@@ -30,10 +30,14 @@
   };
   sponge.img.src = "sponge.png";
 
-  // === Duckies ===
+  // === Duckies & Coneheads ===
   const duckies = [];
   const duckImg = new Image();
   duckImg.src = "duck.png";
+
+  const coneheads = [];
+  const coneheadImg = new Image();
+  coneheadImg.src = "conehead.png";
 
   // ===========================================================
   // 🎵 INSTANT SOUND SYSTEM (preload pools)
@@ -73,6 +77,7 @@
   showerBar.style.zIndex = "999";
   showerBar.innerHTML = `
     <button id="spawnDuckBtn">🐤 Rubber Duck</button>
+    <button id="spawnConeheadBtn">🔺 Conehead</button>
     <button id="spawnBubbleBtn">🫧 Bubble</button>
     <button id="spawnFoamBtn">🧼 Foam</button>
     <button id="clearBathBtn">🧹 Clear</button>
@@ -121,6 +126,18 @@
     playInstantSound("quack", 0.9, 0.9 + Math.random() * 0.2);
   };
 
+  document.getElementById("spawnConeheadBtn").onclick = () => {
+    const cone = {
+      x: Math.random() * (canvas.width - 100),
+      y: 0,
+      width: 100,
+      height: 150,
+      vy: 0,
+      grabbed: false,
+    };
+    coneheads.push(cone);
+  };
+
   document.getElementById("spawnBubbleBtn").onclick = () => {
     playInstantSound("bubble");
     baseImage.src = "base_bath2.png";
@@ -133,11 +150,12 @@
 
   document.getElementById("clearBathBtn").onclick = () => {
     duckies.length = 0;
+    coneheads.length = 0;
     baseImage.src = "base_bath.png";
   };
 
   // ===========================================================
-  // 🖐️ DRAG LOGIC (Sponge + Duck)
+  // 🖐️ DRAG LOGIC (Sponge + Duck + Conehead)
   // ===========================================================
   let dragTarget = null;
   let offsetX = 0,
@@ -189,6 +207,23 @@
         return;
       }
     }
+
+    for (let i = coneheads.length - 1; i >= 0; i--) {
+      const cone = coneheads[i];
+      if (
+        x >= cone.x &&
+        x <= cone.x + cone.width &&
+        y >= cone.y &&
+        y <= cone.y + cone.height
+      ) {
+        dragTarget = cone;
+        offsetX = x - cone.x;
+        offsetY = y - cone.y;
+        cone.grabbed = true;
+        cone.vy = 0;
+        return;
+      }
+    }
   }
 
   function moveDrag(e) {
@@ -210,20 +245,6 @@
     dragTarget = null;
   }
 
-  function handleTap(e) {
-    const { x, y } = getPointerPos(e);
-    duckies.forEach((duck) => {
-      if (
-        x >= duck.x &&
-        x <= duck.x + duck.width &&
-        y >= duck.y &&
-        y <= duck.y + duck.height
-      ) {
-        playInstantSound("quack", 0.9, 0.9 + Math.random() * 0.2);
-      }
-    });
-  }
-
   ["mousedown", "touchstart"].forEach((ev) =>
     canvas.addEventListener(ev, startDrag, { passive: false })
   );
@@ -233,7 +254,6 @@
   ["mouseup", "touchend"].forEach((ev) =>
     canvas.addEventListener(ev, stopDrag, { passive: false })
   );
-  canvas.addEventListener("click", handleTap);
 
   // ===========================================================
   // 🧩 HITBOX (for sponge washing)
@@ -266,6 +286,15 @@
       ctx.stroke();
     }
     ctx.restore();
+  }
+
+  function isTouching(a, b) {
+    return !(
+      a.x + a.width < b.x ||
+      a.x > b.x + b.width ||
+      a.y + a.height < b.y ||
+      a.y > b.y + b.height
+    );
   }
 
   function isTouchingHitbox(a) {
@@ -343,16 +372,21 @@
         ctx.drawImage(duckImg, duck.x, duck.y, duck.width, duck.height);
     });
 
-    raf = requestAnimationFrame(update);
-  }
+    // Coneheads
+    coneheads.forEach((cone) => {
+      if (!cone.grabbed) {
+        cone.vy += 0.5;
+        cone.y += cone.vy;
+        if (cone.y + cone.height > groundY) {
+          cone.y = groundY - cone.height;
+          cone.vy *= -0.3;
+        }
+      }
+      if (coneheadImg.complete && coneheadImg.naturalWidth > 0)
+        ctx.drawImage(coneheadImg, cone.x, cone.y, cone.width, cone.height);
+    });
 
-  function isTouching(a, b) {
-    return !(
-      a.x + a.width < b.x ||
-      a.x > b.x + b.width ||
-      a.y + a.height < b.y ||
-      a.y > b.y + b.height
-    );
+    raf = requestAnimationFrame(update);
   }
 
   function resizeCanvas() {
