@@ -105,7 +105,7 @@
       food: { w: 80, h: 80 },
       duck: { w: 130, h: 130 },
       fish: { w: 130, h: 75 },
-      conehead: { w: 200, h: 350 },
+      conehead: { w: 100, h: 150 },
     };
     const { w, h } = sizeMap[type] || { w: 80, h: 80 };
     const f = {
