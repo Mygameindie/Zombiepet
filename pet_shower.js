@@ -42,12 +42,16 @@
   // ===========================================================
   // 🎵 INSTANT SOUND SYSTEM (preload pools)
   // ===========================================================
-  const soundPool = {
-    quack: [new Audio("quack.mp3"), new Audio("quack.mp3"), new Audio("quack.mp3")],
-    splash: [new Audio("splash.mp3"), new Audio("splash.mp3")],
-    bubble: [new Audio("bubble.mp3"), new Audio("bubble.mp3")],
-    foam: [new Audio("foam.mp3"), new Audio("foam.mp3")],
-  };
+  // ===========================================================
+// 🎵 INSTANT SOUND SYSTEM (preload pools)
+// ===========================================================
+const soundPool = {
+  quack: [new Audio("quack.mp3"), new Audio("quack.mp3"), new Audio("quack.mp3")],
+  splash: [new Audio("splash.mp3"), new Audio("splash.mp3")],
+  bubble: [new Audio("bubble.mp3"), new Audio("bubble.mp3")],
+  foam: [new Audio("foam.mp3"), new Audio("foam.mp3")],
+  conehead: [new Audio("conehead.mp3"), new Audio("conehead.mp3")], // ✅ added
+};
   let soundIndex = 0;
 
   function playInstantSound(key, volume = 0.9, rate = 1.0) {
@@ -127,17 +131,19 @@
   };
 
   document.getElementById("spawnConeheadBtn").onclick = () => {
-    const cone = {
-      x: Math.random() * (canvas.width - 100),
-      y: 0,
-      width: 100,
-      height: 150,
-      vy: 0,
-      grabbed: false,
-    };
-    coneheads.push(cone);
+  const cone = {
+    x: Math.random() * (canvas.width - 100),
+    y: 0,
+    width: 100,
+    height: 150,
+    vy: 0,
+    grabbed: false,
   };
+  coneheads.push(cone);
 
+  // ✅ Play sound when conehead spawns
+  playInstantSound("conehead", 0.9, 0.95 + Math.random() * 0.1);
+};
   document.getElementById("spawnBubbleBtn").onclick = () => {
     playInstantSound("bubble");
     baseImage.src = "base_bath2.png";

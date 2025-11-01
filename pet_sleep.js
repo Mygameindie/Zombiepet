@@ -36,14 +36,16 @@
   imgs.food.src = "food.png";
   imgs.conehead.src = "conehead.png";
 
-  // === Sounds (Duck Quack) ===
-  const QUACK_SRC = "quack.mp3";
-  function playQuack(volume = 0.85) {
-    const a = new Audio(QUACK_SRC);
-    a.preload = "auto";
-    a.volume = volume;
-    a.play().catch(() => {});
-  }
+  // === Sounds (Duck Quack + Conehead Sound) ===
+const QUACK_SRC = "quack.mp3";
+const CONEHEAD_SRC = "conehead.mp3";
+
+function playSound(src, volume = 0.85) {
+  const a = new Audio(src);
+  a.preload = "auto";
+  a.volume = volume;
+  a.play().catch(() => {});
+}
 
   // Unlock audio for iOS
   function unlockAudioOnce() {
@@ -120,9 +122,11 @@
     };
     foods.push(f);
 
-    // 🦆 Quack immediately when duck spawns
-    if (type === "duck") playQuack();
-  }
+// 🦆 Quack immediately when duck spawns
+if (type === "duck") playSound(QUACK_SRC);
+// 🧠 Play conehead sound when it spawns
+if (type === "conehead") playSound(CONEHEAD_SRC);
+}
 
   // === UI: Food Buttons ===
   const panel = document.createElement("div");
@@ -314,10 +318,16 @@
       f.y += f.vy;
 
       // 🦆 Quack when duck lands
-      if (f.type === "duck" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
-        f.soundPlayed = true;
-        playQuack();
-      }
+if (f.type === "duck" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
+  f.soundPlayed = true;
+  playSound(QUACK_SRC);
+}
+
+// 🧠 Conehead sound when landing
+if (f.type === "conehead" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
+  f.soundPlayed = true;
+  playSound(CONEHEAD_SRC);
+}
 
       if (f.y + f.h / 2 >= groundY) {
         f.y = groundY - f.h / 2;
