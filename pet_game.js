@@ -41,8 +41,8 @@
     zombie = {
       x: canvas.width * 0.25,
       y: canvas.height / 2,
-      w: 90,
-      h: 90,
+      w: 120,
+      h: 120,
       dy: 0,
       alive: true
     };
@@ -63,9 +63,11 @@ function flap() {
 if ("ontouchstart" in window) {
   // Mobile / touchscreen
   window.addEventListener("touchstart", (e) => {
-    e.preventDefault(); // stop generating a mouse event
-    flap();
-  }, { passive: false });
+  // Allow button taps (e.g. Restart)
+  if (e.target.tagName === "BUTTON") return;
+  e.preventDefault(); // block only canvas taps
+  flap();
+}, { passive: false });
 } else {
   // Desktop
   window.addEventListener("mousedown", flap);
@@ -164,9 +166,17 @@ if ("ontouchstart" in window) {
     }
     if (zombie.y < 0) zombie.y = 0;
 
-    // spawn poles
-    if (frame % Math.floor(poleDistance / speed) === 0) spawnPole();
-    frame++;
+    // --- pole spawning control ---
+if (!poles.length) {
+  // first pole at start
+  spawnPole();
+} else {
+  const lastPole = poles[poles.length - 1];
+  // distance since last pole
+  if (canvas.width - lastPole.x >= poleDistance) {
+    spawnPole();
+  }
+}
 
     for (let p of poles) {
       p.x -= speed;
