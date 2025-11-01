@@ -1,4 +1,35 @@
 // ===========================================================
+// 🧱 GLOBAL FOCUS & INPUT LOCK (prevents focus/scroll/zoom)
+// ===========================================================
+(function () {
+  // Disable text selection and touch highlights
+  document.body.style.userSelect = "none";
+  document.body.style.webkitUserSelect = "none";
+  document.body.style.touchAction = "none";
+  document.body.style.overflow = "hidden";
+  document.body.style.margin = "0";
+  document.body.style.padding = "0";
+  document.body.style.height = "100vh";
+
+  // Prevent spacebar or arrow keys from scrolling
+  window.addEventListener("keydown", (e) => {
+    const keys = [" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    if (keys.includes(e.key)) e.preventDefault();
+  });
+
+  // Prevent double-tap zoom on mobile
+  let lastTouch = 0;
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const now = Date.now();
+      if (now - lastTouch < 350) e.preventDefault();
+      lastTouch = now;
+    },
+    { passive: false }
+  );
+})();
+// ===========================================================
 // 🎧 GLOBAL SOUND MANAGER (shared across all modes)
 // ===========================================================
 if (!window.SoundManager) {
@@ -92,6 +123,10 @@ if (!window.SoundManager) {
   document.getElementById('sleep-btn').addEventListener('click', () => {
     loadMode('pet_sleep.js', 'Sleep Mode');
   });
+    // 🎮 New Game Mode
+  document.getElementById('game-btn').addEventListener('click', () => {
+    loadMode('pet_game.js', 'Game Mode');
+  }); 
   
   // Auto-load Normal on first open
   loadMode('pet_script.js', 'Normal Mode');
