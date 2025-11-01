@@ -41,7 +41,7 @@
     zombie = {
       x: canvas.width * 0.25,
       y: canvas.height / 2,
-      w: 130,
+      w: 100,
       h: 120,
       dy: 0,
       alive: true
