@@ -36,6 +36,8 @@
   // === State ===
   let zombie, poles, score, frame, gameOver;
   let restartBtn = null;
+  let rafId = null;
+  let onKeyDown = null, onMouseDown = null, onTouchStart = null;
 
   function resetGame() {
     zombie = {
@@ -54,7 +56,7 @@
 
   // === Controls ===
 function flap() {
-  if (!zombie.alive) return;
+  if (!zombie || !zombie.alive) return;
   zombie.dy = jumpPower;
   if (window.SoundManager) SoundManager.playClone(jumpSound, 0.7);
 }
@@ -62,21 +64,26 @@ function flap() {
 // Detect platform type and bind correctly
 if ("ontouchstart" in window) {
   // Mobile / touchscreen
-  window.addEventListener("touchstart", (e) => {
-  // Allow button taps (e.g. Restart)
-  if (e.target.tagName === "BUTTON") return;
-  e.preventDefault(); // block only canvas taps
-  flap();
-}, { passive: false });
+  onTouchStart = (e) => {
+    // Allow button taps (e.g. Restart) and ignore non-canvas touches
+    if (e.target.tagName === "BUTTON") return;
+    if (e.target !== canvas) return;
+    e.preventDefault();
+    flap();
+  };
+  window.addEventListener("touchstart", onTouchStart, { passive: false });
 } else {
   // Desktop
-  window.addEventListener("mousedown", flap);
-  window.addEventListener("keydown", (e) => {
+  onMouseDown = () => flap();
+  window.addEventListener("mousedown", onMouseDown);
+
+  onKeyDown = (e) => {
     if ([" ", "ArrowUp", "w", "W"].includes(e.key)) {
       e.preventDefault();
       flap();
     }
-  });
+  };
+  window.addEventListener("keydown", onKeyDown);
 }
 
   // === Spawn pole ===
@@ -117,7 +124,7 @@ if ("ontouchstart" in window) {
 
   // === Death ===
   function hit() {
-    if (!zombie.alive) return;
+    if (!zombie || !zombie.alive) return;
     zombie.alive = false;
     gameOver = true;
     if (window.SoundManager) SoundManager.playClone(failSound, 0.9);
@@ -126,33 +133,64 @@ if ("ontouchstart" in window) {
 
   // === Restart button ===
   function showRestartButton() {
-    if (restartBtn) restartBtn.remove();
-    restartBtn = document.createElement("button");
-    restartBtn.textContent = "🔁 Restart";
-    Object.assign(restartBtn.style, {
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      fontSize: "2rem",
-      padding: "15px 30px",
-      border: "3px solid black",
-      borderRadius: "15px",
-      background: "#fff",
-      zIndex: 9999,
-      cursor: "pointer",
-      boxShadow: "0 4px 8px rgba(0,0,0,0.3)"
-    });
-    restartBtn.addEventListener("click", () => {
-      restartBtn.remove();
+  // Don't create restart button if user changed mode
+  if (window._modeName !== "game") return;
+  if (restartBtn) restartBtn.remove();
+
+  restartBtn = document.createElement("button");
+  restartBtn.textContent = "🔁 Restart";
+  Object.assign(restartBtn.style, {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    fontSize: "2rem",
+    padding: "15px 30px",
+    border: "3px solid black",
+    borderRadius: "15px",
+    background: "#fff",
+    zIndex: 9999,
+    cursor: "pointer",
+    boxShadow: "0 4px 8px rgba(0,0,0,0.3)"
+  });
+
+  restartBtn.addEventListener("click", () => {
+    // prevent restart if user changed mode
+    if (window._modeName !== "game") return;
+    restartBtn.remove();
+    startCountdown();
+  });
+
+  document.body.appendChild(restartBtn);
+}
+
+function startCountdown() {
+  if (window._modeName !== "game") return;
+  let count = 5;
+  const countdownInterval = setInterval(() => {
+    if (window._modeName !== "game") {
+      clearInterval(countdownInterval);
+      return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "bold 120px Arial";
+    ctx.fillStyle = "#000";
+    ctx.textAlign = "center";
+    ctx.fillText(count > 0 ? count : "Ready!", canvas.width / 2, canvas.height / 2);
+
+    if (count < 0) {
+      clearInterval(countdownInterval);
       startGame();
-    });
-    document.body.appendChild(restartBtn);
-  }
+    }
+    count--;
+  }, 1000);
+}
 
   // === Game loop ===
   function update() {
-    if (!gameOver) requestAnimationFrame(update);
+  if (!zombie) return; // prevent null crash
+    if (!gameOver) rafId = requestAnimationFrame(update);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // physics
@@ -188,7 +226,7 @@ if (!poles.length) {
       ctx.drawImage(poleImg, p.x, p.bottomY, p.w, bottomHeight);
 
       // precise collision check
-      if (zombie.alive && collides(zombie, p)) hit();
+      if (zombie && zombie.alive && collides(zombie, p)) hit();
 
       // scoring
       if (!p.passed && p.x + p.w < zombie.x) {
@@ -204,7 +242,7 @@ if (!poles.length) {
     poles = poles.filter(p => p.x + p.w > 0);
 
     // draw zombie
-    ctx.drawImage(zombie.alive ? zombieImg : zombieHitImg, zombie.x, zombie.y, zombie.w, zombie.h);
+    if (zombie) ctx.drawImage(zombie.alive ? zombieImg : zombieHitImg, zombie.x, zombie.y, zombie.w, zombie.h);
 
     // score
     ctx.font = "bold 42px Arial";
@@ -213,6 +251,7 @@ if (!poles.length) {
   }
 
   function startGame() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     resetGame();
     update();
   }
@@ -220,12 +259,15 @@ if (!poles.length) {
   startGame();
 
   window._modeCleanup = () => {
-    window.removeEventListener("keydown", flap);
-    window.removeEventListener("mousedown", flap);
-    window.removeEventListener("touchstart", flap);
+    if (onKeyDown) window.removeEventListener("keydown", onKeyDown);
+    if (onMouseDown) window.removeEventListener("mousedown", onMouseDown);
+    if (onTouchStart) window.removeEventListener("touchstart", onTouchStart);
     window.removeEventListener("resize", resize);
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     if (restartBtn) restartBtn.remove();
     gameOver = true;
+    poles = [];
+    zombie = null;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 })();

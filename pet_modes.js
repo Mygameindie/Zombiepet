@@ -2,7 +2,6 @@
 // 🧱 GLOBAL FOCUS & INPUT LOCK (prevents focus/scroll/zoom)
 // ===========================================================
 (function () {
-  // Disable text selection and touch highlights
   document.body.style.userSelect = "none";
   document.body.style.webkitUserSelect = "none";
   document.body.style.touchAction = "none";
@@ -11,13 +10,11 @@
   document.body.style.padding = "0";
   document.body.style.height = "100vh";
 
-  // Prevent spacebar or arrow keys from scrolling
   window.addEventListener("keydown", (e) => {
     const keys = [" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
     if (keys.includes(e.key)) e.preventDefault();
   });
 
-  // Prevent double-tap zoom on mobile
   let lastTouch = 0;
   document.addEventListener(
     "touchend",
@@ -29,8 +26,9 @@
     { passive: false }
   );
 })();
+
 // ===========================================================
-// 🎧 GLOBAL SOUND MANAGER (shared across all modes)
+// 🎧 GLOBAL SOUND MANAGER
 // ===========================================================
 if (!window.SoundManager) {
   window.SoundManager = {
@@ -58,21 +56,25 @@ if (!window.SoundManager) {
   };
 }
 
-// pet_modes.js
-// Controls which mode is active. Ensures only ONE mode script runs at a time.
-
+// ===========================================================
+// 🧩 MODE MANAGER — All modes are now full modes
+// ===========================================================
 (function () {
-  const hint = document.getElementById('hint-text');
-
+  const hint = document.getElementById("hint");
   let activeScriptEl = null;
 
   function unloadActiveMode() {
-    if (window._modeCleanup && typeof window._modeCleanup === 'function') {
-      try { window._modeCleanup(); } catch (e) { console.warn('cleanup error', e); }
+    // 1️⃣ Cleanup function
+    if (window._modeCleanup && typeof window._modeCleanup === "function") {
+      try { window._modeCleanup(); } catch (e) { console.warn("cleanup error", e); }
     }
     window._modeCleanup = null;
     window._modeName = null;
 
+    // 2️⃣ Remove leftover UI elements (reset/game overlays etc.)
+    document.querySelectorAll(".mode-ui, .game-ui, #reset-button").forEach(el => el.remove());
+
+    // 3️⃣ Remove script element
     if (activeScriptEl) {
       activeScriptEl.remove();
       activeScriptEl = null;
@@ -80,54 +82,72 @@ if (!window.SoundManager) {
   }
 
   function loadMode(src, label) {
-	  if (window.SoundManager) SoundManager.stopAll();
+    if (window.SoundManager) SoundManager.stopAll();
+
+    // Always unload previous mode
     unloadActiveMode();
 
-    const s = document.createElement('script');
-    s.src = src + '?v=' + Date.now(); // cache-bust during dev
+    const s = document.createElement("script");
+    s.src = src + "?v=" + Date.now(); // cache-bust for dev
     s.onload = () => {
-      if (hint) hint.textContent = label + ' Loaded';
-
+      if (hint) hint.textContent = `${label} Loaded`;
       window._modeName = label;
     };
     s.onerror = () => {
-      console.error('Failed to load', src);
-      if (hint) hint.textContent = 'Error loading ' + label;
+      console.error("Failed to load", src);
+      if (hint) hint.textContent = `Error loading ${label}`;
     };
     document.body.appendChild(s);
     activeScriptEl = s;
   }
 
-  document.getElementById('normal-btn').addEventListener('click', () => {
-    loadMode('pet_script.js', 'Normal Mode');
-  });
-    // 🎤 New Karaoke Mode
-  document.getElementById('karaoke-btn').addEventListener('click', () => {
-    loadMode('music.js', 'Karaoke Mode');
+  // 🎮 MODE BUTTONS
+  document.getElementById("normal-btn").addEventListener("click", () => {
+    loadMode("pet_script.js", "Normal Mode");
   });
 
-  document.getElementById('feed-btn').addEventListener('click', () => {
-    loadMode('pet_multi_feed.js', 'Feeding Mode');
+  document.getElementById("karaoke-btn").addEventListener("click", () => {
+    loadMode("music.js", "Karaoke Mode");
   });
 
-  document.getElementById('shower-btn').addEventListener('click', () => {
-    loadMode('pet_shower.js', 'Shower Mode');
+  document.getElementById("feed-btn").addEventListener("click", () => {
+    loadMode("pet_multi_feed.js", "Feeding Mode");
   });
 
-  // 🧈 New Trolling Mode
-  document.getElementById('troll-btn').addEventListener('click', () => {
-    loadMode('trolling.js', 'Trolling Mode');
+  document.getElementById("shower-btn").addEventListener("click", () => {
+    loadMode("pet_shower.js", "Shower Mode");
   });
 
-    // 😴 New Sleep Mode
-  document.getElementById('sleep-btn').addEventListener('click', () => {
-    loadMode('pet_sleep.js', 'Sleep Mode');
+  document.getElementById("troll-btn").addEventListener("click", () => {
+    loadMode("trolling.js", "Trolling Mode");
   });
-    // 🎮 New Game Mode
-  document.getElementById('game-btn').addEventListener('click', () => {
-    loadMode('pet_game.js', 'Game Mode');
-  }); 
-  
-  // Auto-load Normal on first open
-  loadMode('pet_script.js', 'Normal Mode');
+
+  document.getElementById("sleep-btn").addEventListener("click", () => {
+    loadMode("pet_sleep.js", "Sleep Mode");
+  });
+
+  document.getElementById("game-btn").addEventListener("click", () => {
+    loadMode("pet_game.js", "Game Mode");
+  });
+
+  document.getElementById("swing-btn").addEventListener("click", () => {
+  loadMode("swing.js", "Swing Mode");
+});
+
+  // Auto-load Normal Mode
+  loadMode("pet_script.js", "Normal Mode");
 })();
+
+// ===========================================================
+// 🌐 UNIVERSAL MODE HANDLER
+// ===========================================================
+window.switchMode = function (newModeInit) {
+  if (window._modeCleanup) {
+    try { window._modeCleanup(); } catch (e) {
+      console.warn("Previous mode cleanup failed:", e);
+    }
+  }
+  window._modeCleanup = null;
+  window._modeName = null;
+  if (typeof newModeInit === "function") newModeInit();
+};
