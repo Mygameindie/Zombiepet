@@ -48,7 +48,7 @@
   Object.assign(forceSlider.style, {
     position: "fixed",
     left: "50%",
-    bottom: "40px",
+    top: "40px",
     transform: "translateX(-50%)",
     width: "300px",
     height: "16px",
@@ -74,7 +74,7 @@
   Object.assign(gravitySlider.style, {
     position: "fixed",
     left: "50%",
-    bottom: "80px",
+    top: "80px",
     transform: "translateX(-50%)",
     width: "300px",
     height: "16px",

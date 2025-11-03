@@ -4,33 +4,96 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>My Pet Game</title>
+
+  <!-- 🎨 Styles -->
   <link rel="stylesheet" href="pet_style.css" />
-  <link rel="stylesheet" href="scroll.css">
+  <link rel="stylesheet" href="scroll.css" />
+
+  <style>
+    /* 🧩 Extra styling to pin scrollable mode menu to bottom */
+    #mode-menu.combined-scroll-bar {
+      position: fixed !important;
+      bottom: 15px !important;
+      top: auto !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 9000 !important;
+      background: rgba(255, 255, 255, 0.92);
+      border: 2px solid #ccc;
+      border-radius: 14px;
+      width: 90%;
+      max-width: 600px;
+      padding: 8px;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      scroll-behavior: smooth;
+    }
+
+    /* Make sure buttons look good on small screens */
+    #mode-menu button {
+      flex: 0 0 auto;
+      padding: 6px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #6200ea;
+      color: #fff;
+      transition: background 0.3s, transform 0.15s ease;
+      white-space: nowrap;
+    }
+    #mode-menu button:hover {
+      background-color: #3700b3;
+      transform: scale(1.05);
+    }
+  </style>
 </head>
+
 <body>
+  <!-- 🖼️ Main canvas for all pet modes -->
   <canvas id="canvas"></canvas>
 
+  <!-- 🧭 UI Overlay -->
   <div id="ui">
-    <div id="mode-menu" class="card">
-      <button id="normal-btn">🧸 drag and drop</button>
-      <button id="feed-btn" class="menu-button">🍖 Feed</button>
-	  <button id="sleep-btn">😴 Sleep</button>
-	  <button id="shower-btn">🧽 Shower Mode</button>
-	  <button id="troll-btn">🧈 Trolling Mode</button>
-	  <button id="karaoke-btn">🎤 Karaoke Mode</button>
-<button id="game-btn">🎮 Game Mode</button>
-<button id="swing-btn">🪁 Swing Mode</button>
-	 
 
-<!-- Add Sleep button to your mode buttons -->
-
+    <!-- 🎮 Scrollable bottom mode bar -->
+    <div id="mode-menu" class="combined-scroll-bar">
+      <button id="normal-btn">🧸 drag & drop</button>
+      <button id="feed-btn">🍖 Feed</button>
+      <button id="sleep-btn">😴 Sleep</button>
+      <button id="shower-btn">🧽 Shower</button>
+      <button id="troll-btn">🧈 Trolling</button>
+      <button id="karaoke-btn">🎤 Karaoke</button>
+      <button id="game-btn">🎮 Game</button>
+      <button id="swing-btn">🪁 Swing</button>
     </div>
-    <div id="hint" class="card small">
 
-    </div>
-	
+    <!-- 💬 Hint text -->
+    <div id="hint" class="card small"></div>
+  </div>
 
-
+  <!-- ⚙️ Main JS loader -->
   <script src="pet_modes.js"></script>
+
+  <!-- 💡 Optional: add drag-scroll helper -->
+  <script>
+    function enableDragScroll(scrollElement) {
+      let isDown = false, startX, scrollLeft;
+      scrollElement.addEventListener("mousedown", e => {
+        isDown = true;
+        startX = e.pageX - scrollElement.offsetLeft;
+        scrollLeft = scrollElement.scrollLeft;
+      });
+      scrollElement.addEventListener("mouseleave", () => (isDown = false));
+      scrollElement.addEventListener("mouseup", () => (isDown = false));
+      scrollElement.addEventListener("mousemove", e => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - scrollElement.offsetLeft;
+        scrollElement.scrollLeft = scrollLeft - (x - startX) * 1.5;
+      });
+    }
+    enableDragScroll(document.getElementById("mode-menu"));
+  </script>
 </body>
 </html>
