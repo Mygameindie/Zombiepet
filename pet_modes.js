@@ -134,6 +134,10 @@ if (!window.SoundManager) {
   loadMode("swing.js", "Swing Mode");
 });
 
+document.getElementById("xox-btn").addEventListener("click", () => {
+  loadMode("pet_xox.js", "XOX Mode");
+});
+
   // Auto-load Normal Mode
   loadMode("pet_script.js", "Normal Mode");
 })();
