@@ -154,3 +154,25 @@ body {
     font-size: calc(12px * var(--ui-scale));
   }
 }
+.sit-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+
+  border: none;
+  border-radius: 14px;
+  background: #ffcc66;
+  color: #3a2a00;
+
+  box-shadow: 0 6px 0 #cc9a33;
+  cursor: pointer;
+}
+
+.sit-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #cc9a33;
+}
