@@ -1,41 +1,47 @@
 /**************************************************
- * script_plus.js — Sit Pose Toggle (FINAL + FIX SIZE)
- * Sit size: h = 100px, w = 50px
+ * script_plus.js — Sit Pose (FINAL FIRST-LOAD FIX)
  **************************************************/
 
 (function () {
 
+  // =========================================================
+  // ⭐ EDIT SIT SIZE HERE ⭐
+  // =========================================================
+  const SIT_WIDTH  = 135;
+  const SIT_HEIGHT = 230;
+
+  // =========================================================
+  // INTERNAL STATE
+  // =========================================================
   let btn = null;
   let sitMode = false;
   let sitFrame = 0;
   let sitTimer = 0;
+  let initialized = false;
 
   // =========================================================
-  // IMAGE LOADING
+  // IMAGE LOADING (SAFE)
   // =========================================================
   const sit1 = new Image();
   const sit2 = new Image();
 
-  let sitReady1 = false;
-  let sitReady2 = false;
+  let ready1 = false;
+  let ready2 = false;
 
-  sit1.onload = () => sitReady1 = true;
-  sit2.onload = () => sitReady2 = true;
+  sit1.onload = () => ready1 = true;
+  sit2.onload = () => ready2 = true;
+
+  sit1.onerror = () => console.error("❌ sit1.png failed to load");
+  sit2.onerror = () => console.error("❌ sit2.png failed to load");
 
   sit1.src = "sit1.png";
   sit2.src = "sit2.png";
 
   // =========================================================
-  // FIXED SIZE (⭐ EDIT HERE)
-  // =========================================================
-  const SIT_HEIGHT = 230; // px
-  const SIT_WIDTH  = 135;  // px
-
-  // =========================================================
   // POSE LOOP
   // =========================================================
   function sitPoseLoop() {
-    if (!sitReady1 || !sitReady2) return null;
+    if (!ready1 || !ready2) return null;
 
     sitTimer++;
     if (sitTimer > 20) {
@@ -43,17 +49,15 @@
       sitFrame = (sitFrame + 1) % 2;
     }
 
-    const img = sitFrame === 0 ? sit1 : sit2;
-
-    // ⭐ ATTACH SIZE FOR CANVAS RENDERER
-    img._forceWidth  = SIT_WIDTH;
-    img._forceHeight = SIT_HEIGHT;
-
-    return img;
+    return {
+      img: sitFrame === 0 ? sit1 : sit2,
+      w: SIT_WIDTH,
+      h: SIT_HEIGHT
+    };
   }
 
   // =========================================================
-  // STATE
+  // STATE CONTROL
   // =========================================================
   function enableSit() {
     sitMode = true;
@@ -72,43 +76,83 @@
   }
 
   // =========================================================
-  // EXIT ON CLICK
+  // EXIT SIT WHEN USER INTERACTS WITH PET
   // =========================================================
-  function exitSit() {
+  function exitSitByInteraction() {
     if (sitMode) disableSit();
+  }
+
+  function attachExitListeners() {
+    const canvas = document.getElementById("canvas");
+    if (!canvas) return;
+
+    canvas.addEventListener("mousedown", exitSitByInteraction);
+    canvas.addEventListener("touchstart", exitSitByInteraction, { passive: true });
+  }
+
+  function detachExitListeners() {
+    const canvas = document.getElementById("canvas");
+    if (!canvas) return;
+
+    canvas.removeEventListener("mousedown", exitSitByInteraction);
+    canvas.removeEventListener("touchstart", exitSitByInteraction);
   }
 
   // =========================================================
   // BUTTON
   // =========================================================
   function createButton() {
-    if (btn) return;
+    if (btn && document.body.contains(btn)) return;
 
     btn = document.createElement("button");
     btn.id = "sit-btn";
     btn.className = "mode-ui sit-btn";
     btn.textContent = "Sit";
+
     btn.addEventListener("click", toggleSit);
     document.body.appendChild(btn);
+
+    disableSit();
   }
 
   // =========================================================
-  // INIT
+  // INIT / CLEANUP
   // =========================================================
   function init() {
-    createButton();
+    if (initialized) return;
+    initialized = true;
 
-    const canvas = document.getElementById("canvas");
-    if (canvas) {
-      canvas.addEventListener("mousedown", exitSit);
-      canvas.addEventListener("touchstart", exitSit, { passive: true });
+    createButton();
+    attachExitListeners();
+  }
+
+  function cleanup() {
+    initialized = false;
+    disableSit();
+    detachExitListeners();
+
+    if (btn) {
+      btn.removeEventListener("click", toggleSit);
+      btn.remove();
+      btn = null;
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
+  // =========================================================
+  // MODE EVENTS
+  // =========================================================
+  window.addEventListener("pet:mode:normal", () => {
+    cleanup();
     init();
+  });
+
+  window.addEventListener("pet:mode:unload", cleanup);
+
+  // =========================================================
+  // 🔥 FIRST LOAD GUARANTEE 🔥
+  // =========================================================
+  if (window._modeName === "normal") {
+    init(); // ← THIS is the missing piece
   }
 
 })();

@@ -1,9 +1,9 @@
 // ===========================================================
-// 🐾 pet_script.js — MAIN NORMAL MODE (FINAL + POSE SIZE SUPPORT)
+// 🐾 pet_script.js — MAIN NORMAL MODE (FULL + SIZE SUPPORT)
 // ===========================================================
 (function () {
 
-  // 🔌 allow external pose override (sit, etc.)
+  // 🔌 allow external pose override (sit, sleep, etc.)
   window.PET_POSE_OVERRIDE = null;
 
   const canvas = document.getElementById("canvas");
@@ -55,13 +55,36 @@
   const bouncePower = 25;
   const MIN_IMPACT = 2.0;
 
+  // =========================================================
+  // FLY ANIMATION
+  // =========================================================
   let frame = 0;
   let timer = 0;
   const speed = 10;
+
+  // =========================================================
+  // SOUND
+  // =========================================================
+  const landSound = new Audio("fly.mp3");
+  landSound.volume = 0.6;
+
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    landSound.play().then(() => {
+      landSound.pause();
+      landSound.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(() => {});
+  }
+
+  window.addEventListener("mousedown", unlockAudio, { once: true });
+  window.addEventListener("touchstart", unlockAudio, { once: true });
+
   let onGround = false;
 
   // =========================================================
-  // DRAG
+  // DRAG CONTROLS
   // =========================================================
   function getPos(e) {
     const r = canvas.getBoundingClientRect();
@@ -92,15 +115,56 @@
   }
 
   function endDrag() {
+    if (pet.dragging) {
+      pet.oldx = pet.x;
+      pet.oldy = pet.y;
+
+      if (pet.y + pet.h / 2 > groundY) {
+        pet.y = groundY - pet.h / 2;
+        vy = -Math.max(12, bouncePower * 0.6);
+        playImpactSound(0.5);
+      }
+    }
     pet.dragging = false;
   }
 
-  ["mousedown","mousemove","mouseup","touchstart","touchmove","touchend"]
-    .forEach(ev => canvas.addEventListener(ev,
-      ev.includes("move") ? moveDrag :
-      ev.includes("down") ? startDrag : endDrag,
-      { passive:false }
-    ));
+  const listeners = [
+    ["mousedown", startDrag],
+    ["mousemove", moveDrag],
+    ["mouseup", endDrag],
+    ["touchstart", startDrag],
+    ["touchmove", moveDrag],
+    ["touchend", endDrag],
+  ];
+
+  listeners.forEach(([ev, fn]) =>
+    canvas.addEventListener(ev, fn, { passive: false })
+  );
+
+  // =========================================================
+  // RESIZE
+  // =========================================================
+  function onResize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    groundY = canvas.height - groundHeight;
+
+    if (pet.y + pet.h / 2 > groundY) {
+      pet.y = groundY - pet.h / 2;
+      pet.oldy = pet.y;
+    }
+  }
+
+  window.addEventListener("resize", onResize);
+
+  function playImpactSound(volume = 0.6) {
+    if (!audioUnlocked) return;
+    try {
+      landSound.volume = volume;
+      landSound.currentTime = 0;
+      landSound.play().catch(() => {});
+    } catch {}
+  }
 
   // =========================================================
   // UPDATE
@@ -110,19 +174,42 @@
       const vx = (pet.x - pet.oldx) * damping;
       vy = (pet.y - pet.oldy) * damping;
 
+      const prevBottom = pet.oldy + pet.h / 2;
+
       pet.oldx = pet.x;
       pet.oldy = pet.y;
-
       pet.x += vx;
-      vy += gravity;
-      pet.y += vy;
 
-      if (pet.y + pet.h / 2 > groundY) {
+      let vyNext = vy + gravity;
+      let yNext = pet.y + vyNext;
+
+      const nextBottom = yNext + pet.h / 2;
+      const wasAbove = prevBottom < groundY;
+      const willBeBelow = nextBottom >= groundY;
+      const crossingGround = wasAbove && willBeBelow && vyNext > 0;
+
+      if (crossingGround) {
         pet.y = groundY - pet.h / 2;
-        vy = 0;
+
+        if (vyNext > MIN_IMPACT) {
+          vy = -bouncePower;
+          if (!onGround) {
+            playImpactSound(Math.min(0.2 + vyNext / 30, 1));
+          }
+        } else {
+          vy = 0;
+        }
         onGround = true;
       } else {
-        onGround = false;
+        pet.y = yNext;
+        if (pet.y + pet.h / 2 > groundY) {
+          pet.y = groundY - pet.h / 2;
+          vy = 0;
+          onGround = true;
+        } else {
+          vy = vyNext;
+          onGround = false;
+        }
       }
     }
   }
@@ -137,15 +224,17 @@
 
   function drawPet() {
 
-    // 🔌 POSE OVERRIDE (sit, etc.)
-    if (window.PET_POSE_OVERRIDE) {
-      const img = window.PET_POSE_OVERRIDE();
-      if (img) {
-        const w = img._forceWidth  || pet.w;
-        const h = img._forceHeight || pet.h;
+    // 🔌 POSE OVERRIDE (SUPPORT Image OR {img,w,h})
+    if (typeof window.PET_POSE_OVERRIDE === "function") {
+      const pose = window.PET_POSE_OVERRIDE();
+
+      // case 1: object with size
+      if (pose && pose.img) {
+        const w = pose.w ?? pet.w;
+        const h = pose.h ?? pet.h;
 
         ctx.drawImage(
-          img,
+          pose.img,
           pet.x - w / 2,
           pet.y - h / 2,
           w,
@@ -153,17 +242,34 @@
         );
         return;
       }
+
+      // case 2: plain Image (backward compatible)
+      if (pose instanceof HTMLImageElement) {
+        ctx.drawImage(
+          pose,
+          pet.x - pet.w / 2,
+          pet.y - pet.h / 2,
+          pet.w,
+          pet.h
+        );
+        return;
+      }
     }
 
+    // ===== NORMAL BASE DRAW =====
     let img = imgs.stand;
 
     if (pet.y + pet.h / 2 < groundY) {
-      timer++;
-      if (timer > speed) {
-        timer = 0;
-        frame = (frame + 1) % 2;
+      if (vy > 5) {
+        img = imgs.fall;
+      } else {
+        timer++;
+        if (timer > speed) {
+          timer = 0;
+          frame = (frame + 1) % 2;
+        }
+        img = frame ? imgs.fly1 : imgs.fly0;
       }
-      img = frame ? imgs.fly1 : imgs.fly0;
     }
 
     ctx.drawImage(
@@ -178,16 +284,32 @@
   // =========================================================
   // LOOP
   // =========================================================
+  let raf = 0;
   function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     update();
     drawGround();
     drawPet();
-    requestAnimationFrame(loop);
+    raf = requestAnimationFrame(loop);
   }
   loop();
 
-  // 🔔 notify plus scripts
+  // =========================================================
+  // CLEANUP (MODE SWITCH)
+  // =========================================================
+  window._modeCleanup = function () {
+    cancelAnimationFrame(raf);
+    listeners.forEach(([ev, fn]) =>
+      canvas.removeEventListener(ev, fn)
+    );
+    window.removeEventListener("resize", onResize);
+    window.PET_POSE_OVERRIDE = null;
+  };
+
+  // =========================================================
+  // MODE STATE + SIGNAL
+  // =========================================================
+  window._modeName = "normal";
   window.dispatchEvent(new Event("pet:mode:normal"));
 
 })();
