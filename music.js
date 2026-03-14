@@ -1,5 +1,5 @@
 // ===========================================================
-// 🎤 ONE-CLICK KARAOKE MODE + AUTO CANCEL ON MODE CHANGE (fixed upload)
+// 🎤 KARAOKE MODE — Accepts any file (audio, video, image, etc.)
 // ===========================================================
 (() => {
   const canvas = document.getElementById("canvas");
@@ -12,68 +12,123 @@
   musicBase2.src = "base_music2.png";
 
   let loaded = 0;
-  const total = 2;
   [musicBase1, musicBase2].forEach(img => {
-    img.onload = () => {
-      loaded++;
-      if (loaded === total) drawIdle();
-    };
+    img.onload = () => { if (++loaded === 2) drawIdle(); };
   });
 
   let currentBase = musicBase1;
   let animationRunning = false;
   let toggle = false;
   let animationInterval = null;
-  let mediaPlayer = null;
+  let mediaPlayer = null;   // <audio> or <video> element
+  let videoEl = null;       // visible <video> DOM overlay
+  let imgBitmap = null;     // loaded image to draw on canvas
   let progressUpdater = null;
   let isPlaying = false;
   let isPaused = false;
   let currentBlobUrl = null;
+  let currentFileType = null; // "audio" | "video" | "image" | "unknown"
 
   // === Resize Canvas ===
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    drawIdle();
+    if (!isPlaying) drawIdle();
   }
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
 
-  // === Idle ===
+  // === Pet drawing ===
+  function petScale() {
+    return currentFileType === "video" ? 0.18 : 0.3;
+  }
+
+  function drawPetFrame() {
+    const scale = petScale();
+    const img = animationRunning ? currentBase : musicBase1;
+    const iw = img.width * scale;
+    const ih = img.height * scale;
+    // bottom-center for audio/image; bottom-right corner for video
+    const x = currentFileType === "video"
+      ? canvas.width - iw - 20
+      : (canvas.width - iw) / 2;
+    const y = canvas.height - ih - 100;
+    if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, x, y, iw, ih);
+  }
+
   function drawIdle() {
-    if (loaded < total) return;
+    if (loaded < 2) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const scale = 0.3;
-    const imgWidth = musicBase1.width * scale;
-    const imgHeight = musicBase1.height * scale;
-    const x = (canvas.width - imgWidth) / 2;
-    const y = canvas.height - imgHeight - 100;
-    ctx.drawImage(musicBase1, x, y, imgWidth, imgHeight);
+    drawPetFrame();
   }
 
-  // === Dance animation ===
-  function drawPet() {
-    if (!animationRunning || loaded < total) {
+  // === Animation RAF loop (for audio & image modes) ===
+  let animRaf = null;
+  function startPetAnimation() {
+    animationRunning = true;
+    function tick() {
+      if (!animationRunning) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawIdle();
-      return;
+
+      // Draw image background if loaded
+      if (imgBitmap) {
+        const cw = canvas.width, ch = canvas.height;
+        const scale = Math.max(cw / imgBitmap.width, ch / imgBitmap.height);
+        const dw = imgBitmap.width * scale;
+        const dh = imgBitmap.height * scale;
+        ctx.drawImage(imgBitmap, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+      }
+
+      drawPetFrame();
+      animRaf = requestAnimationFrame(tick);
     }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const scale = 0.3;
-    const imgWidth = currentBase.width * scale;
-    const imgHeight = currentBase.height * scale;
-    const x = (canvas.width - imgWidth) / 2;
-    const y = canvas.height - imgHeight - 100;
-    ctx.drawImage(currentBase, x, y, imgWidth, imgHeight);
-
-    if (animationRunning) requestAnimationFrame(drawPet);
+    tick();
   }
 
-  // === Upload input ===
+  function stopPetAnimation() {
+    animationRunning = false;
+    if (animRaf) { cancelAnimationFrame(animRaf); animRaf = null; }
+  }
+
+  // === Toolbar UI ===
+  const toolbar = document.createElement("div");
+  toolbar.id = "karaoke-toolbar";
+  toolbar.classList.add("combined-scroll-bar");
+  Object.assign(toolbar.style, {
+    position: "fixed",
+    top: "15px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: "9999",
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+  });
+
+  function makeBtn(text, onClick) {
+    const b = document.createElement("button");
+    b.textContent = text;
+    b.addEventListener("click", onClick);
+    toolbar.appendChild(b);
+    return b;
+  }
+
+  const uploadBtn  = makeBtn("📂 Upload File", () => { if (!isPlaying) uploadInput.click(); });
+  const stopBtn    = makeBtn("⏹️ Stop",   () => stopKaraoke());
+  const pauseBtn   = makeBtn("⏸️ Pause",  () => togglePause());
+  stopBtn.style.display  = "none";
+  pauseBtn.style.display = "none";
+  document.body.appendChild(toolbar);
+
+  // Also keep the header karaoke-btn working
+  const karaokeBtn = document.getElementById("karaoke-btn");
+  const onKaraokeClick = () => { if (!isPlaying) uploadInput.click(); };
+  karaokeBtn.addEventListener("click", onKaraokeClick);
+
+  // === Hidden file input — accept EVERYTHING ===
   const uploadInput = document.createElement("input");
   uploadInput.type = "file";
-  uploadInput.accept = "audio/*,video/*";
+  uploadInput.accept = "*/*";           // no filter — any file
   uploadInput.style.display = "none";
   document.body.appendChild(uploadInput);
 
@@ -81,7 +136,7 @@
   const progressContainer = document.createElement("div");
   Object.assign(progressContainer.style, {
     position: "fixed",
-    bottom: "20px",
+    bottom: "80px",
     left: "50%",
     transform: "translateX(-50%)",
     width: "80%",
@@ -102,93 +157,310 @@
   progressContainer.appendChild(progressBar);
   document.body.appendChild(progressContainer);
 
-  // === Pause button ===
-  const pauseBtn = document.createElement("button");
-  pauseBtn.textContent = "⏸️ Pause";
-  Object.assign(pauseBtn.style, {
+  // === File name label ===
+  const fileLabel = document.createElement("div");
+  Object.assign(fileLabel.style, {
     position: "fixed",
-    bottom: "40px",
-    right: "20px",
-    zIndex: "10000",
+    bottom: "96px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    color: "#fff",
+    fontSize: "14px",
+    textShadow: "0 1px 4px rgba(0,0,0,0.7)",
     display: "none",
-    background: "rgba(255,255,255,0.8)",
-    border: "2px solid #999",
-    borderRadius: "10px",
-    padding: "10px 15px",
-    fontSize: "18px",
-    cursor: "pointer",
+    zIndex: "9999",
+    maxWidth: "80%",
+    textOverflow: "ellipsis",
+    overflow: "hidden",
+    whiteSpace: "nowrap",
   });
-  document.body.appendChild(pauseBtn);
+  document.body.appendChild(fileLabel);
 
-  // === Stop karaoke (stop all music + animation) ===
+  // === Pause / Resume ===
+  function togglePause() {
+    if (!mediaPlayer) return;
+    if (!isPaused) {
+      mediaPlayer.pause();
+      if (videoEl) videoEl.pause();
+      isPaused = true;
+      pauseBtn.textContent = "▶️ Resume";
+      animationRunning = false;
+    } else {
+      mediaPlayer.play();
+      if (videoEl) videoEl.play();
+      isPaused = false;
+      pauseBtn.textContent = "⏸️ Pause";
+      if (currentFileType !== "video") startPetAnimation();
+      else animationRunning = true;
+    }
+  }
+
+  // === Stop everything ===
   function stopKaraoke() {
+    stopPetAnimation();
+
     if (mediaPlayer) {
-      try {
-        mediaPlayer.pause();
-        mediaPlayer.currentTime = 0;
-      } catch (e) {}
+      try { mediaPlayer.pause(); mediaPlayer.currentTime = 0; } catch {}
       mediaPlayer.src = "";
       mediaPlayer.remove();
       mediaPlayer = null;
     }
-
-    // Revoke blob URL to free memory
+    if (videoEl) {
+      videoEl.pause();
+      videoEl.remove();
+      videoEl = null;
+    }
     if (currentBlobUrl) {
       URL.revokeObjectURL(currentBlobUrl);
       currentBlobUrl = null;
     }
+    imgBitmap = null;
 
     clearInterval(animationInterval);
     clearInterval(progressUpdater);
     animationInterval = null;
     progressUpdater = null;
-    animationRunning = false;
     toggle = false;
 
     progressContainer.style.display = "none";
     progressBar.style.width = "0%";
+    fileLabel.style.display = "none";
+    stopBtn.style.display  = "none";
     pauseBtn.style.display = "none";
+    uploadBtn.textContent  = "📂 Upload File";
 
     currentBase = musicBase1;
+    currentFileType = null;
     isPlaying = false;
     isPaused = false;
     drawIdle();
   }
 
-  // === Karaoke button (one-click safe upload) ===
-  const karaokeBtn = document.getElementById("karaoke-btn");
-  const onKaraokeClick = () => {
-    if (isPlaying) return;
-    drawIdle();
-    uploadInput.click();
-  };
-  karaokeBtn.addEventListener("click", onKaraokeClick);
+  // === Detect file type ===
+  function detectType(file) {
+    const mime = file.type || "";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("image/")) return "image";
+    // Fallback: check extension
+    const ext = file.name.split(".").pop().toLowerCase();
+    const audioExts = ["mp3","wav","ogg","flac","aac","m4a","opus","wma","aiff"];
+    const videoExts = ["mp4","mov","avi","webm","mkv","m4v","wmv","flv","3gp","ogv"];
+    const imageExts = ["jpg","jpeg","png","gif","webp","bmp","svg","avif","tiff","ico"];
+    if (audioExts.includes(ext)) return "audio";
+    if (videoExts.includes(ext)) return "video";
+    if (imageExts.includes(ext)) return "image";
+    return "unknown";
+  }
 
-  // === Pause/Resume ===
-  pauseBtn.addEventListener("click", () => {
-    if (!mediaPlayer) return;
-    if (!isPaused) {
-      mediaPlayer.pause();
-      isPaused = true;
-      pauseBtn.textContent = "▶️ Resume";
-    } else {
-      mediaPlayer.play();
-      isPaused = false;
-      pauseBtn.textContent = "⏸️ Pause";
+  // === Show an on-canvas message ===
+  function showMessage(text, subtext = "") {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 36px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 20);
+    if (subtext) {
+      ctx.font = "20px Arial";
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.fillText(subtext, canvas.width / 2, canvas.height / 2 + 24);
     }
+  }
+
+  // === Start progress bar tracking ===
+  function startProgress() {
+    progressContainer.style.display = "block";
+    clearInterval(progressUpdater);
+    progressUpdater = setInterval(() => {
+      if (!mediaPlayer || !mediaPlayer.duration) return;
+      progressBar.style.width = `${(mediaPlayer.currentTime / mediaPlayer.duration) * 100}%`;
+    }, 100);
+  }
+
+  // === Start frame-swap animation interval ===
+  function startFrameSwap() {
+    clearInterval(animationInterval);
+    animationInterval = setInterval(() => {
+      currentBase = toggle ? musicBase1 : musicBase2;
+      toggle = !toggle;
+    }, 400);
+  }
+
+  // === Try to play a media element, show overlay if blocked ===
+  async function tryPlay(el) {
+    try {
+      await el.play();
+    } catch {
+      // Autoplay blocked — show tap-to-start overlay
+      const overlay = document.createElement("div");
+      overlay.textContent = "▶️ Tap to start";
+      Object.assign(overlay.style, {
+        position: "fixed", inset: "0", display: "flex",
+        alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.55)", color: "#fff",
+        fontSize: "28px", zIndex: "10001", cursor: "pointer",
+      });
+      document.body.appendChild(overlay);
+      const tap = async () => {
+        try { await el.play(); } catch {}
+        overlay.remove();
+      };
+      overlay.addEventListener("click", tap, { once: true });
+      overlay.addEventListener("touchstart", tap, { once: true });
+    }
+  }
+
+  // === Handle: AUDIO ===
+  async function handleAudio(file) {
+    currentFileType = "audio";
+    mediaPlayer = document.createElement("audio");
+    mediaPlayer.src = currentBlobUrl;
+    mediaPlayer.volume = 0.9;
+    mediaPlayer.style.display = "none";
+    document.body.appendChild(mediaPlayer);
+
+    startFrameSwap();
+    startPetAnimation();
+    startProgress();
+    await tryPlay(mediaPlayer);
+    mediaPlayer.addEventListener("ended", stopKaraoke, { once: true });
+  }
+
+  // === Handle: VIDEO ===
+  async function handleVideo(file) {
+    currentFileType = "video";
+
+    // Visible video element overlaid on canvas
+    videoEl = document.createElement("video");
+    videoEl.src = currentBlobUrl;
+    videoEl.playsInline = true;
+    videoEl.volume = 0.9;
+    Object.assign(videoEl.style, {
+      position: "fixed",
+      inset: "0",
+      width: "100%",
+      height: "100%",
+      objectFit: "contain",
+      background: "#000",
+      zIndex: "100",
+    });
+    document.body.appendChild(videoEl);
+
+    // Use separate hidden audio to drive progress (video already has audio)
+    mediaPlayer = videoEl; // same element drives both
+
+    // Pet dances in bottom-right corner OVER the video
+    canvas.style.pointerEvents = "none";
+    canvas.style.zIndex = "101";
+    canvas.style.background = "transparent";
+
+    startFrameSwap();
+    animationRunning = true;
+
+    // Canvas draw loop for pet-over-video
+    function drawOverVideo() {
+      if (!animationRunning) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPetFrame();
+      animRaf = requestAnimationFrame(drawOverVideo);
+    }
+    drawOverVideo();
+
+    startProgress();
+    await tryPlay(videoEl);
+    videoEl.addEventListener("ended", () => {
+      canvas.style.pointerEvents = "";
+      canvas.style.zIndex = "";
+      canvas.style.background = "";
+      stopKaraoke();
+    }, { once: true });
+  }
+
+  // === Handle: IMAGE ===
+  async function handleImage(file) {
+    currentFileType = "image";
+
+    // Load image via createImageBitmap for canvas drawing
+    try {
+      imgBitmap = await createImageBitmap(file);
+    } catch {
+      showMessage("🖼️ Couldn't load image");
+      isPlaying = false;
+      return;
+    }
+
+    // No audio — just pet dancing in front of image
+    startFrameSwap();
+    startPetAnimation();
+    // No progress bar (no duration)
+  }
+
+  // === Handle: UNKNOWN ===
+  async function handleUnknown(file) {
+    currentFileType = "unknown";
+    // Try treating it as audio — works for many formats browsers support
+    mediaPlayer = document.createElement("audio");
+    mediaPlayer.src = currentBlobUrl;
+    mediaPlayer.volume = 0.9;
+    mediaPlayer.style.display = "none";
+    document.body.appendChild(mediaPlayer);
+
+    // Test if it can play
+    mediaPlayer.load();
+    await new Promise(res => {
+      mediaPlayer.addEventListener("canplay", res, { once: true });
+      mediaPlayer.addEventListener("error", res, { once: true });
+      setTimeout(res, 2000); // give up after 2s
+    });
+
+    if (mediaPlayer.error || mediaPlayer.readyState === 0) {
+      // Can't play — show message
+      showMessage("🤷 Can't play this file", file.name);
+      await new Promise(r => setTimeout(r, 2500));
+      stopKaraoke();
+      return;
+    }
+
+    startFrameSwap();
+    startPetAnimation();
+    startProgress();
+    await tryPlay(mediaPlayer);
+    mediaPlayer.addEventListener("ended", stopKaraoke, { once: true });
+  }
+
+  // === File chosen ===
+  uploadInput.addEventListener("change", async e => {
+    const file = e.target.files[0];
+    uploadInput.value = ""; // reset so same file can be re-uploaded
+    if (!file || isPlaying) return;
+
+    stopKaraoke();
+    isPlaying = true;
+
+    currentBlobUrl = URL.createObjectURL(file);
+    const type = detectType(file);
+
+    // Update UI
+    fileLabel.textContent = file.name;
+    fileLabel.style.display = "block";
+    stopBtn.style.display  = "inline-block";
+    pauseBtn.style.display = type === "image" ? "none" : "inline-block";
+    uploadBtn.textContent  = "📂 Change File";
+
+    if (type === "audio")   await handleAudio(file);
+    else if (type === "video")  await handleVideo(file);
+    else if (type === "image")  await handleImage(file);
+    else                        await handleUnknown(file);
   });
 
   // === Detect mode change via _modeName setter ===
-  // Store original descriptor so we can restore it on cleanup
   const origDescriptor = Object.getOwnPropertyDescriptor(window, "_modeName");
   let _modeNameValue = window._modeName || "none";
-
   Object.defineProperty(window, "_modeName", {
-    configurable: true, // MUST be true so we can restore it on cleanup
+    configurable: true,
     enumerable: true,
-    get() {
-      return _modeNameValue;
-    },
+    get() { return _modeNameValue; },
     set(value) {
       const old = _modeNameValue;
       _modeNameValue = value;
@@ -199,105 +471,28 @@
     },
   });
 
-  // === File chosen — autoplay-safe ===
-  uploadInput.addEventListener("change", async e => {
-    const file = e.target.files[0];
-    if (!file || isPlaying) return;
-
-    stopKaraoke(); // clean start
-    isPlaying = true;
-
-    currentBlobUrl = URL.createObjectURL(file);
-    const isVideo = file.type.startsWith("video/");
-    mediaPlayer = document.createElement(isVideo ? "video" : "audio");
-    mediaPlayer.src = currentBlobUrl;
-    mediaPlayer.style.display = "none";
-    mediaPlayer.volume = 0.9;
-    if (isVideo) {
-      mediaPlayer.playsInline = true;
-      mediaPlayer.muted = false;
-    }
-    document.body.appendChild(mediaPlayer);
-
-    // === Start animation ===
-    animationRunning = true;
-    drawPet();
-    clearInterval(animationInterval);
-    animationInterval = setInterval(() => {
-      currentBase = toggle ? musicBase1 : musicBase2;
-      toggle = !toggle;
-    }, 400);
-
-    // === Progress bar + pause button ===
-    progressContainer.style.display = "block";
-    pauseBtn.style.display = "block";
-    clearInterval(progressUpdater);
-    progressUpdater = setInterval(() => {
-      if (!mediaPlayer || !mediaPlayer.duration) return;
-      const percent = (mediaPlayer.currentTime / mediaPlayer.duration) * 100;
-      progressBar.style.width = `${percent}%`;
-    }, 100);
-
-    // ✅ Try to play immediately
-    try {
-      await mediaPlayer.play();
-    } catch (err) {
-      const overlay = document.createElement("div");
-      overlay.textContent = "🎬 Tap to start playback";
-      Object.assign(overlay.style, {
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0,0,0,0.5)",
-        color: "white",
-        fontSize: "24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: "9999",
-        cursor: "pointer",
-      });
-      document.body.appendChild(overlay);
-      const tapToPlay = async () => {
-        try { await mediaPlayer.play(); } catch {}
-        overlay.remove();
-      };
-      document.addEventListener("click", tapToPlay, { once: true });
-      document.addEventListener("touchstart", tapToPlay, { once: true });
-    }
-  });
-
   // === Cleanup ===
   window._modeCleanup = function () {
     stopKaraoke();
-
-    // Remove event listeners
+    canvas.style.pointerEvents = "";
+    canvas.style.zIndex = "";
+    canvas.style.background = "";
     window.removeEventListener("resize", resizeCanvas);
     karaokeBtn.removeEventListener("click", onKaraokeClick);
-
-    // Remove DOM elements
+    toolbar.remove();
     uploadInput.remove();
     progressContainer.remove();
-    pauseBtn.remove();
-
-    // Restore original _modeName property descriptor
+    fileLabel.remove();
     try {
       if (origDescriptor) {
         Object.defineProperty(window, "_modeName", origDescriptor);
       } else {
-        // Was a simple assignment — restore as data property
-        const val = _modeNameValue;
         Object.defineProperty(window, "_modeName", {
-          configurable: true,
-          enumerable: true,
-          writable: true,
-          value: val,
+          configurable: true, enumerable: true, writable: true,
+          value: _modeNameValue,
         });
       }
     } catch {}
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
