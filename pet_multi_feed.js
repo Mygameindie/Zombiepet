@@ -254,6 +254,9 @@
     const img = petImgs[pet.mood];
     if (img && img.complete && img.naturalWidth > 0)
       ctx.drawImage(img, pet.x - pet.w / 2, pet.y - pet.h / 2, pet.w, pet.h);
+    // 👕 Outfit overlay
+    if (window.drawOutfitOverlay)
+      window.drawOutfitOverlay(ctx, "stand", pet.x - pet.w / 2, pet.y - pet.h / 2, pet.w, pet.h);
   }
 
   function drawFoods() {

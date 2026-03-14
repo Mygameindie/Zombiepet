@@ -54,6 +54,9 @@
       : (canvas.width - iw) / 2;
     const y = canvas.height - ih - 100;
     if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, x, y, iw, ih);
+    // 👕 Outfit overlay (pet dances so alternate fly0/fly1)
+    if (window.drawOutfitOverlay)
+      window.drawOutfitOverlay(ctx, animationRunning ? (currentBase === musicBase1 ? "fly0" : "fly1") : "stand", x, y, iw, ih);
   }
 
   function drawIdle() {

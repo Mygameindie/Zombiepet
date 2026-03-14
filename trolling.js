@@ -260,6 +260,9 @@
 
     if (baseImage.complete && baseImage.naturalWidth > 0)
       ctx.drawImage(baseImage, pet.x, pet.y, pet.w, pet.h);
+    // 👕 Outfit overlay
+    if (window.drawOutfitOverlay)
+      window.drawOutfitOverlay(ctx, "stand", pet.x, pet.y, pet.w, pet.h);
 
     if (waterMode && wateringCan.complete && wateringCan.naturalWidth > 0)
       ctx.drawImage(wateringCan, can.x, can.y, can.w, can.h);

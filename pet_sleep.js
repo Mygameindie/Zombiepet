@@ -387,9 +387,13 @@ if (type === "conehead") playSound("conehead");
   function drawPet() {
     if (!pet.visible) return;
     let img = imgs.stand;
-    if (pet.dragging) img = imgs.fly0;
-    else if (vy > 2) img = imgs.fall;
+    let outfitState = "stand";
+    if (pet.dragging) { img = imgs.fly0; outfitState = "fly0"; }
+    else if (vy > 2) { img = imgs.fall; outfitState = "fall"; }
     safeDraw(img, pet.x - pet.w / 2, pet.y - pet.h / 2, pet.w, pet.h);
+    // 👕 Outfit overlay
+    if (window.drawOutfitOverlay)
+      window.drawOutfitOverlay(ctx, outfitState, pet.x - pet.w / 2, pet.y - pet.h / 2, pet.w, pet.h);
   }
 
   function drawFoods() {
