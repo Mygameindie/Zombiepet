@@ -51,6 +51,7 @@
   let modeBtn = null;
   let lastSpawnX = 0;
   let worldOffsetX = 0;
+  let highScore = parseInt(localStorage.getItem("zombiepet_highscore") || "0", 10);
 
   // --- Play SFX helper ---
   function playSfx(audio, vol = 1.0) {
@@ -156,29 +157,39 @@
     if (!zombie.alive) return;
     zombie.alive = false;
     gameOver = true;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("zombiepet_highscore", highScore);
+    }
     playSfx(assets.fail, 0.9);
     showRestartButton();
   }
 
   function showRestartButton() {
     if (restartBtn) restartBtn.remove();
-    restartBtn = document.createElement("button");
-    restartBtn.textContent = "🔁 Restart";
+    restartBtn = document.createElement("div");
+    const isNewBest = score > 0 && score === highScore;
+    restartBtn.innerHTML = `
+      <div style="font-size:1.4rem;margin-bottom:8px;color:#c00;font-weight:bold">
+        Game Over! Score: ${score}
+      </div>
+      ${isNewBest ? '<div style="font-size:1.1rem;color:#e65c00;margin-bottom:8px">🏆 New Best!</div>' : ''}
+      <button style="font-size:1.6rem;padding:12px 28px;border:3px solid black;border-radius:12px;background:#fff;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.25)">🔁 Restart</button>
+    `;
     Object.assign(restartBtn.style, {
       position: "absolute",
       top: "50%",
       left: "50%",
       transform: "translate(-50%, -50%)",
-      fontSize: "2rem",
-      padding: "15px 30px",
-      border: "3px solid black",
-      borderRadius: "15px",
-      background: "#fff",
+      textAlign: "center",
+      background: "rgba(255,255,255,0.92)",
+      padding: "20px 30px",
+      borderRadius: "16px",
+      border: "2px solid #ccc",
       zIndex: 9999,
-      cursor: "pointer",
-      boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+      boxShadow: "0 6px 16px rgba(0,0,0,0.3)",
     });
-    restartBtn.addEventListener("click", () => {
+    restartBtn.querySelector("button").addEventListener("click", () => {
       restartBtn.remove();
       restartBtn = null;
       startCountdown();
@@ -247,7 +258,11 @@
   function drawScore() {
     ctx.font = "bold 42px Arial";
     ctx.fillStyle = "#000";
+    ctx.textAlign = "left";
     ctx.fillText("Score: " + score, 40, 70);
+    ctx.font = "bold 24px Arial";
+    ctx.fillStyle = "#555";
+    ctx.fillText("Best: " + highScore, 40, 104);
   }
 
   function drawPolesAndCollide() {

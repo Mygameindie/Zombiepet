@@ -251,6 +251,7 @@
   // 🎨 DRAW LOOP
   // ===========================================================
   let running = true;
+  let rafId = 0;
   function draw() {
     if (!running) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -263,7 +264,7 @@
     if (waterMode && wateringCan.complete && wateringCan.naturalWidth > 0)
       ctx.drawImage(wateringCan, can.x, can.y, can.w, can.h);
 
-    requestAnimationFrame(draw);
+    rafId = requestAnimationFrame(draw);
   }
   draw();
 
@@ -272,6 +273,7 @@
   // ===========================================================
   window._modeCleanup = function () {
     running = false;
+    cancelAnimationFrame(rafId);
     trollBar?.remove();
     window.removeEventListener("resize", resizeCanvas);
     events.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
@@ -279,5 +281,6 @@
     if (window.SoundManager) SoundManager.stopAll();
     touchingPet = false;
     waterMode = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 })();

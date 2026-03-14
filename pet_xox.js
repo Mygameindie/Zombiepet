@@ -177,19 +177,15 @@
     }
   }
 
-  // === Click ===
-  canvas.addEventListener("click", (e) => {
-    if (gameOver) {
-      reset();
-      return;
-    }
-
+  // === Input handler (click + touch) ===
+  function handleInput(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
     const size = Math.min(canvas.width, canvas.height) * 0.6;
     const startX = (canvas.width - size) / 2;
     const startY = (canvas.height - size) / 2;
     const cell = size / 3;
-    const x = e.clientX - startX;
-    const y = e.clientY - startY;
+    const x = (clientX - rect.left) - startX;
+    const y = (clientY - rect.top) - startY;
     if (x < 0 || y < 0 || x > size || y > size) return;
     const col = Math.floor(x / cell);
     const row = Math.floor(y / cell);
@@ -205,15 +201,26 @@
         gameOver = true;
 
         // 🔊 Play win/lose sound
-        if (result === "X") {
-          SoundManager.playClone(winSound);
-        } else if (result === "O") {
-          SoundManager.playClone(failSound);
+        if (window.SoundManager) {
+          if (result === "X") SoundManager.playClone(winSound);
+          else if (result === "O") SoundManager.playClone(failSound);
         }
       }
       drawBoard();
     }
+  }
+
+  canvas.addEventListener("click", (e) => {
+    if (gameOver) { reset(); return; }
+    handleInput(e.clientX, e.clientY);
   });
+
+  canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    if (gameOver) { reset(); return; }
+    const t = e.touches[0];
+    handleInput(t.clientX, t.clientY);
+  }, { passive: false });
 
   // === Reset ===
   function reset() {
@@ -252,5 +259,6 @@
   window._modeCleanup = function () {
     window.removeEventListener("resize", resize);
     container.remove();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 })();

@@ -202,7 +202,5 @@
     gravitySlider.remove();
     style.remove();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const newCanvas = canvas.cloneNode(true);
-    canvas.parentNode.replaceChild(newCanvas, canvas);
   };
 })();

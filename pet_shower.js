@@ -251,15 +251,15 @@ const soundPool = {
     dragTarget = null;
   }
 
-  ["mousedown", "touchstart"].forEach((ev) =>
-    canvas.addEventListener(ev, startDrag, { passive: false })
-  );
-  ["mousemove", "touchmove"].forEach((ev) =>
-    canvas.addEventListener(ev, moveDrag, { passive: false })
-  );
-  ["mouseup", "touchend"].forEach((ev) =>
-    canvas.addEventListener(ev, stopDrag, { passive: false })
-  );
+  const dragEvents = [
+    ["mousedown", startDrag],
+    ["touchstart", startDrag],
+    ["mousemove", moveDrag],
+    ["touchmove", moveDrag],
+    ["mouseup", stopDrag],
+    ["touchend", stopDrag],
+  ];
+  dragEvents.forEach(([ev, fn]) => canvas.addEventListener(ev, fn, { passive: false }));
 
   // ===========================================================
   // 🧩 HITBOX (for sponge washing)
@@ -409,8 +409,7 @@ const soundPool = {
     running = false;
     cancelAnimationFrame(raf);
     showerBar?.remove();
+    dragEvents.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const newCanvas = canvas.cloneNode(true);
-    canvas.parentNode.replaceChild(newCanvas, canvas);
   };
 })();

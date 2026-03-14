@@ -265,13 +265,14 @@
     }
   }
 
+  let rafId = 0;
   function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ground();
     drawPet();
     applyGravity();
     drawFoods();
-    requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
   }
   loop();
 
@@ -361,10 +362,12 @@
   // 🧹 CLEANUP
   // ===========================================================
   window._modeCleanup = function () {
+    cancelAnimationFrame(rafId);
     listeners.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
     window.removeEventListener("resize", resizeCanvas);
     if (bubble) bubble.style.display = "none";
     if (spawnButtons) spawnButtons.remove();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
   window._modeName = "feed";

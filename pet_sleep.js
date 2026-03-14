@@ -33,7 +33,7 @@
   imgs.blanket1.src = "blanket1.png";
   imgs.duck.src = "duck.png";
   imgs.fish.src = "food1.png"; // ✅ fixed
-  imgs.food.src = "food.png";
+  imgs.food.src = "food1.png";
   imgs.conehead.src = "conehead.png";
 
   // === Sounds (Duck Quack + Conehead Sound) ===
