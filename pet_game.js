@@ -47,7 +47,6 @@
 
   // --- State ---
   let zombie, poles, score, rafId, gameOver, started;
-  let restartBtn = null;
   let modeBtn = null;
   let lastSpawnX = 0;
   let worldOffsetX = 0;
@@ -96,16 +95,19 @@
   const onKeyDown = (e) => {
     if ([" ", "ArrowUp", "w", "W"].includes(e.key)) {
       e.preventDefault();
+      if (gameOver) { onGameOverTap(e); return; }
       flap();
     }
   };
   const onMouseDown = (e) => {
     if (e.target && e.target.tagName === "BUTTON") return;
+    if (gameOver) { onGameOverTap(e); return; }
     flap();
   };
   const onTouchStart = (e) => {
     if (e.target && e.target.tagName === "BUTTON") return;
     e.preventDefault();
+    if (gameOver) { onGameOverTap(e); return; }
     flap();
   };
 
@@ -152,49 +154,144 @@
     return hitTop || hitBottom;
   }
 
-  // --- Death & Restart ---
+  // --- Death ---
+  let isNewBest = false;
   function hit() {
     if (!zombie.alive) return;
     zombie.alive = false;
     gameOver = true;
-    if (score > highScore) {
+    isNewBest = score > 0 && score > highScore;
+    if (isNewBest) {
       highScore = score;
       localStorage.setItem("zombiepet_highscore", highScore);
     }
     playSfx(assets.fail, 0.9);
-    showRestartButton();
+    startGameOverLoop();
   }
 
-  function showRestartButton() {
-    if (restartBtn) restartBtn.remove();
-    restartBtn = document.createElement("div");
-    const isNewBest = score > 0 && score === highScore;
-    restartBtn.innerHTML = `
-      <div style="font-size:1.4rem;margin-bottom:8px;color:#c00;font-weight:bold">
-        Game Over! Score: ${score}
-      </div>
-      ${isNewBest ? '<div style="font-size:1.1rem;color:#e65c00;margin-bottom:8px">🏆 New Best!</div>' : ''}
-      <button style="font-size:1.6rem;padding:12px 28px;border:3px solid black;border-radius:12px;background:#fff;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.25)">🔁 Restart</button>
-    `;
-    Object.assign(restartBtn.style, {
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      textAlign: "center",
-      background: "rgba(255,255,255,0.92)",
-      padding: "20px 30px",
-      borderRadius: "16px",
-      border: "2px solid #ccc",
-      zIndex: 9999,
-      boxShadow: "0 6px 16px rgba(0,0,0,0.3)",
-    });
-    restartBtn.querySelector("button").addEventListener("click", () => {
-      restartBtn.remove();
-      restartBtn = null;
-      startCountdown();
-    });
-    document.body.appendChild(restartBtn);
+  // --- Game Over Screen (drawn on canvas) ---
+  let gameOverRaf = null;
+  let gameOverAlpha = 0; // fade-in
+
+  function drawGameOver() {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    // Dim background (fade in)
+    gameOverAlpha = Math.min(gameOverAlpha + 0.045, 0.62);
+    ctx.fillStyle = `rgba(0,0,0,${gameOverAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+
+    if (gameOverAlpha < 0.25) return; // wait for fade before drawing panel
+
+    // Panel
+    const pw = Math.min(360, W * 0.8);
+    const ph = isNewBest ? 230 : 200;
+    const px = cx - pw / 2;
+    const py = cy - ph / 2;
+    const r = 20;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    ctx.beginPath();
+    ctx.moveTo(px + r, py);
+    ctx.lineTo(px + pw - r, py);
+    ctx.quadraticCurveTo(px + pw, py, px + pw, py + r);
+    ctx.lineTo(px + pw, py + ph - r);
+    ctx.quadraticCurveTo(px + pw, py + ph, px + pw - r, py + ph);
+    ctx.lineTo(px + r, py + ph);
+    ctx.quadraticCurveTo(px, py + ph, px, py + ph - r);
+    ctx.lineTo(px, py + r);
+    ctx.quadraticCurveTo(px, py, px + r, py);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // "Game Over" title
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 32px Arial";
+    ctx.fillStyle = "#cc0000";
+    ctx.fillText("Game Over!", cx, py + 42);
+
+    // Score
+    ctx.font = "bold 22px Arial";
+    ctx.fillStyle = "#111";
+    ctx.fillText(`Score: ${score}`, cx, py + 85);
+
+    // Best
+    ctx.font = "18px Arial";
+    ctx.fillStyle = "#666";
+    ctx.fillText(`Best: ${highScore}`, cx, py + 115);
+
+    // New best badge
+    if (isNewBest) {
+      ctx.font = "bold 18px Arial";
+      ctx.fillStyle = "#e65c00";
+      ctx.fillText("🏆 New Best!", cx, py + 148);
+    }
+
+    // Restart button (drawn as a rounded rect)
+    const btnY = py + ph - 46;
+    const btnW = 160;
+    const btnH = 40;
+    const btnX = cx - btnW / 2;
+    const btnR = 12;
+    ctx.fillStyle = "#222";
+    ctx.beginPath();
+    ctx.moveTo(btnX + btnR, btnY);
+    ctx.lineTo(btnX + btnW - btnR, btnY);
+    ctx.quadraticCurveTo(btnX + btnW, btnY, btnX + btnW, btnY + btnR);
+    ctx.lineTo(btnX + btnW, btnY + btnH - btnR);
+    ctx.quadraticCurveTo(btnX + btnW, btnY + btnH, btnX + btnW - btnR, btnY + btnH);
+    ctx.lineTo(btnX + btnR, btnY + btnH);
+    ctx.quadraticCurveTo(btnX, btnY + btnH, btnX, btnY + btnH - btnR);
+    ctx.lineTo(btnX, btnY + btnR);
+    ctx.quadraticCurveTo(btnX, btnY, btnX + btnR, btnY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = "bold 18px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.fillText("🔁 Restart", cx, btnY + btnH / 2);
+  }
+
+  function startGameOverLoop() {
+    gameOverAlpha = 0;
+    function tick() {
+      // Redraw the last game frame first
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPolesStatic();
+      drawZombie();
+      drawScore();
+      drawGameOver();
+      gameOverRaf = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  // Draw poles without moving them (for game over background)
+  function drawPolesStatic() {
+    for (const p of poles) {
+      ctx.drawImage(assets.pole, p.x, 0, p.w, p.topH);
+      const bottomHeight = window.innerHeight - p.bottomY;
+      ctx.drawImage(assets.pole, p.x, p.bottomY, p.w, bottomHeight);
+    }
+  }
+
+  // Click/tap anywhere on canvas to restart (when game over)
+  function onGameOverTap(e) {
+    if (!gameOver) return;
+    if (e.target && e.target.tagName === "BUTTON") return;
+    if (gameOverAlpha < 0.5) return; // ignore taps during fade-in
+    cancelAnimationFrame(gameOverRaf);
+    gameOverRaf = null;
+    gameOver = false;
+    startCountdown();
   }
 
   // --- Mode Change Button ---
@@ -346,11 +443,11 @@
   // --- Cleanup ---
   window._modeCleanup = () => {
     if (rafId) cancelAnimationFrame(rafId);
+    if (gameOverRaf) cancelAnimationFrame(gameOverRaf);
     window.removeEventListener("keydown", onKeyDown);
     window.removeEventListener("mousedown", onMouseDown);
     window.removeEventListener("touchstart", onTouchStart);
     window.removeEventListener("resize", resize);
-    if (restartBtn) restartBtn.remove();
     if (modeBtn) modeBtn.remove();
     gameOver = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
