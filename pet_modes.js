@@ -159,3 +159,19 @@ window.switchMode = function (newModeInit) {
   window._modeName = null;
   if (typeof newModeInit === "function") newModeInit();
 };
+
+// ===========================================================
+// 🎮 MODE MANAGER (setMode — from Lilypet)
+// ===========================================================
+window._modeName = window._modeName || "none";
+window._modeCleanup = window._modeCleanup || null;
+
+window.setMode = function (name, startFunction) {
+  if (typeof window._modeCleanup === "function") {
+    try { window._modeCleanup(); } catch (e) {}
+  }
+  window._modeName = name;
+  if (typeof startFunction === "function") {
+    startFunction();
+  }
+};

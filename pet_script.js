@@ -258,17 +258,20 @@
 
     // ===== NORMAL BASE DRAW =====
     let img = imgs.stand;
+    let outfitState = "stand";
 
     if (pet.y + pet.h / 2 < groundY) {
       if (vy > 5) {
         img = imgs.fall;
+        outfitState = "fall";
       } else {
         timer++;
         if (timer > speed) {
           timer = 0;
           frame = (frame + 1) % 2;
         }
-        img = frame ? imgs.fly1 : imgs.fly0;
+        if (frame) { img = imgs.fly1; outfitState = "fly1"; }
+        else        { img = imgs.fly0; outfitState = "fly0"; }
       }
     }
 
@@ -279,6 +282,11 @@
       pet.w,
       pet.h
     );
+
+    // 👕 Outfit overlay
+    if (window.drawOutfitOverlay) {
+      window.drawOutfitOverlay(ctx, outfitState, pet.x - pet.w / 2, pet.y - pet.h / 2, pet.w, pet.h);
+    }
   }
 
   // =========================================================

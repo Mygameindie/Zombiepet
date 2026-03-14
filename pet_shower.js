@@ -6,6 +6,9 @@
   if (window.SoundManager) SoundManager.stopAll();
   window._modeName = "shower";
 
+  // 👕 Hide clothes during shower
+  if (window.enterShowerClothesRules) window.enterShowerClothesRules();
+
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   resizeCanvas();
@@ -414,5 +417,7 @@
     showerBar?.remove();
     dragEvents.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 👕 Restore clothes after shower
+    if (window.exitShowerClothesRules) window.exitShowerClothesRules();
   };
 })();
