@@ -205,11 +205,7 @@
       mediaPlayer.remove();
       mediaPlayer = null;
     }
-    if (videoEl) {
-      videoEl.pause();
-      videoEl.remove();
-      videoEl = null;
-    }
+    videoEl = null;
     if (currentBlobUrl) {
       URL.revokeObjectURL(currentBlobUrl);
       currentBlobUrl = null;
@@ -327,54 +323,22 @@
     mediaPlayer.addEventListener("ended", stopKaraoke, { once: true });
   }
 
-  // === Handle: VIDEO ===
+  // === Handle: VIDEO (audio only — pet dances, no video shown) ===
   async function handleVideo(file) {
     currentFileType = "video";
 
-    // Visible video element overlaid on canvas
-    videoEl = document.createElement("video");
-    videoEl.src = currentBlobUrl;
-    videoEl.playsInline = true;
-    videoEl.volume = 0.9;
-    Object.assign(videoEl.style, {
-      position: "fixed",
-      inset: "0",
-      width: "100%",
-      height: "100%",
-      objectFit: "contain",
-      background: "#000",
-      zIndex: "100",
-    });
-    document.body.appendChild(videoEl);
-
-    // Use separate hidden audio to drive progress (video already has audio)
-    mediaPlayer = videoEl; // same element drives both
-
-    // Pet dances in bottom-right corner OVER the video
-    canvas.style.pointerEvents = "none";
-    canvas.style.zIndex = "101";
-    canvas.style.background = "transparent";
+    // Play through an <audio> element — extracts the audio track from video files
+    mediaPlayer = document.createElement("audio");
+    mediaPlayer.src = currentBlobUrl;
+    mediaPlayer.volume = 0.9;
+    mediaPlayer.style.display = "none";
+    document.body.appendChild(mediaPlayer);
 
     startFrameSwap();
-    animationRunning = true;
-
-    // Canvas draw loop for pet-over-video
-    function drawOverVideo() {
-      if (!animationRunning) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawPetFrame();
-      animRaf = requestAnimationFrame(drawOverVideo);
-    }
-    drawOverVideo();
-
+    startPetAnimation();
     startProgress();
-    await tryPlay(videoEl);
-    videoEl.addEventListener("ended", () => {
-      canvas.style.pointerEvents = "";
-      canvas.style.zIndex = "";
-      canvas.style.background = "";
-      stopKaraoke();
-    }, { once: true });
+    await tryPlay(mediaPlayer);
+    mediaPlayer.addEventListener("ended", stopKaraoke, { once: true });
   }
 
   // === Handle: IMAGE ===
@@ -474,9 +438,6 @@
   // === Cleanup ===
   window._modeCleanup = function () {
     stopKaraoke();
-    canvas.style.pointerEvents = "";
-    canvas.style.zIndex = "";
-    canvas.style.background = "";
     window.removeEventListener("resize", resizeCanvas);
     karaokeBtn.removeEventListener("click", onKaraokeClick);
     toolbar.remove();
