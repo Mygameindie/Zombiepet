@@ -210,17 +210,18 @@
     }
   }
 
-  canvas.addEventListener("click", (e) => {
+  function onCanvasClick(e) {
     if (gameOver) { reset(); return; }
     handleInput(e.clientX, e.clientY);
-  });
-
-  canvas.addEventListener("touchstart", (e) => {
+  }
+  function onCanvasTouch(e) {
     e.preventDefault();
     if (gameOver) { reset(); return; }
     const t = e.touches[0];
     handleInput(t.clientX, t.clientY);
-  }, { passive: false });
+  }
+  canvas.addEventListener("click", onCanvasClick);
+  canvas.addEventListener("touchstart", onCanvasTouch, { passive: false });
 
   // === Reset ===
   function reset() {
@@ -258,6 +259,8 @@
   // === Cleanup when leaving mode ===
   window._modeCleanup = function () {
     window.removeEventListener("resize", resize);
+    canvas.removeEventListener("click", onCanvasClick);
+    canvas.removeEventListener("touchstart", onCanvasTouch);
     container.remove();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };

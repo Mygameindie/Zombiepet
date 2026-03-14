@@ -51,6 +51,10 @@ if (!window.SoundManager) {
         s.volume = volume;
         s.play().catch(() => {});
         this.register(s);
+        // Prune finished sounds to prevent unbounded growth
+        if (this.active.length > 30) {
+          this.active = this.active.filter(a => !a.ended && !a.paused);
+        }
       } catch {}
     }
   };

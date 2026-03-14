@@ -16,6 +16,7 @@
   // === Base ===
   let baseImage = new Image();
   baseImage.src = "base_bath.png";
+  let bathing = false; // tracks whether sponge is touching pet
   let petX = canvas.width / 2 - 150;
   let petY = groundY - 400;
 
@@ -42,10 +43,7 @@
   // ===========================================================
   // 🎵 INSTANT SOUND SYSTEM (preload pools)
   // ===========================================================
-  // ===========================================================
-// 🎵 INSTANT SOUND SYSTEM (preload pools)
-// ===========================================================
-const soundPool = {
+  const soundPool = {
   quack: [new Audio("quack.mp3"), new Audio("quack.mp3"), new Audio("quack.mp3")],
   splash: [new Audio("splash.mp3"), new Audio("splash.mp3")],
   bubble: [new Audio("bubble.mp3"), new Audio("bubble.mp3")],
@@ -146,17 +144,20 @@ const soundPool = {
 };
   document.getElementById("spawnBubbleBtn").onclick = () => {
     playInstantSound("bubble");
+    bathing = true;
     baseImage.src = "base_bath2.png";
   };
 
   document.getElementById("spawnFoamBtn").onclick = () => {
     playInstantSound("foam");
+    bathing = true;
     baseImage.src = "base_bath2.png";
   };
 
   document.getElementById("clearBathBtn").onclick = () => {
     duckies.length = 0;
     coneheads.length = 0;
+    bathing = false;
     baseImage.src = "base_bath.png";
   };
 
@@ -353,12 +354,14 @@ const soundPool = {
       ctx.restore();
     }
 
-    // Touch logic
+    // Touch logic — use state flag instead of fragile URL string check
     const touching = isTouchingHitbox(sponge);
-    if (touching && !baseImage.src.includes("base_bath2.png")) {
+    if (touching && !bathing) {
+      bathing = true;
       baseImage.src = "base_bath2.png";
       playInstantSound("splash");
-    } else if (!touching && !baseImage.src.includes("base_bath.png")) {
+    } else if (!touching && bathing && sponge.dragging) {
+      bathing = false;
       baseImage.src = "base_bath.png";
     }
 

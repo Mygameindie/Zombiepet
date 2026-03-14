@@ -309,26 +309,33 @@
   }
 
   // --- Wait for images then start ---
-  function imagesReady() {
-    return [assets.zombie, assets.zombieHit, assets.pole].every(
-      (img) => img.complete && img.naturalWidth > 0
-    );
-  }
-
+  // Counts only images that aren't already loaded (avoids race with cached images)
   function waitForImagesThenStart() {
-    if (imagesReady()) {
+    const imgs = [assets.zombie, assets.zombieHit, assets.pole];
+    const pending = imgs.filter(img => !img.complete || img.naturalWidth === 0);
+
+    if (pending.length === 0) {
       resetGame();
       loop();
-      showModeButton(); // 👈 show mode button after game starts
+      showModeButton();
       return;
     }
-    let left = 3;
-    [assets.zombie, assets.zombieHit, assets.pole].forEach((img) => {
+
+    let left = pending.length;
+    pending.forEach((img) => {
       img.addEventListener("load", () => {
         if (--left === 0) {
           resetGame();
           loop();
-          showModeButton(); // show after loading
+          showModeButton();
+        }
+      });
+      img.addEventListener("error", () => {
+        // Still start even if an image fails to load
+        if (--left === 0) {
+          resetGame();
+          loop();
+          showModeButton();
         }
       });
     });

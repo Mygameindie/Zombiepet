@@ -27,8 +27,8 @@
   let mediaPlayer = null;
   let progressUpdater = null;
   let isPlaying = false;
-  let currentMode = "none";
   let isPaused = false;
+  let currentBlobUrl = null;
 
   // === Resize Canvas ===
   function resizeCanvas() {
@@ -120,15 +120,6 @@
   });
   document.body.appendChild(pauseBtn);
 
-  // === Karaoke button (one-click safe upload) ===
-  const karaokeBtn = document.getElementById("karaoke-btn");
-  karaokeBtn.addEventListener("click", () => {
-    if (isPlaying) return;
-    currentMode = "karaoke";
-    drawIdle();
-    uploadInput.click(); // ✅ open file picker under same gesture
-  });
-
   // === Stop karaoke (stop all music + animation) ===
   function stopKaraoke() {
     if (mediaPlayer) {
@@ -139,6 +130,12 @@
       mediaPlayer.src = "";
       mediaPlayer.remove();
       mediaPlayer = null;
+    }
+
+    // Revoke blob URL to free memory
+    if (currentBlobUrl) {
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
     }
 
     clearInterval(animationInterval);
@@ -158,6 +155,15 @@
     drawIdle();
   }
 
+  // === Karaoke button (one-click safe upload) ===
+  const karaokeBtn = document.getElementById("karaoke-btn");
+  const onKaraokeClick = () => {
+    if (isPlaying) return;
+    drawIdle();
+    uploadInput.click();
+  };
+  karaokeBtn.addEventListener("click", onKaraokeClick);
+
   // === Pause/Resume ===
   pauseBtn.addEventListener("click", () => {
     if (!mediaPlayer) return;
@@ -172,51 +178,26 @@
     }
   });
 
-  // === Detect mode change (instant auto-stop for all buttons) ===
-let _modeNameValue = window._modeName || "none";
-Object.defineProperty(window, "_modeName", {
-  get() {
-    return _modeNameValue;
-  },
-  set(value) {
-    const old = _modeNameValue;
-    _modeNameValue = value;
-    if (old === "karaoke" && value !== "karaoke") {
-      stopKaraoke();
-      uploadInput.value = "";
-    }
-    currentMode = value;
-  },
-});
+  // === Detect mode change via _modeName setter ===
+  // Store original descriptor so we can restore it on cleanup
+  const origDescriptor = Object.getOwnPropertyDescriptor(window, "_modeName");
+  let _modeNameValue = window._modeName || "none";
 
-// ✅ Also catch any click on other mode buttons
-document.addEventListener("click", (e) => {
-  // If a button changes mode, stop karaoke
-  if (
-    currentMode === "karaoke" &&
-    e.target &&
-    e.target.id &&
-    e.target.id !== "karaoke-btn"
-  ) {
-    // common mode button ids you might have
-    const id = e.target.id.toLowerCase();
-    if (
-      id.includes("feed") ||
-      id.includes("troll") ||
-      id.includes("bath") ||
-      id.includes("dance") ||
-      id.includes("game") ||
-      id.includes("normal") ||
-	  id.includes("sleep") ||
-      id.includes("mode") // fallback for anything with 'mode'
-    ) {
-      stopKaraoke();
-      uploadInput.value = "";
-      window._modeName = id.replace("-btn", "");
-      currentMode = window._modeName;
-    }
-  }
-});
+  Object.defineProperty(window, "_modeName", {
+    configurable: true, // MUST be true so we can restore it on cleanup
+    enumerable: true,
+    get() {
+      return _modeNameValue;
+    },
+    set(value) {
+      const old = _modeNameValue;
+      _modeNameValue = value;
+      if (old === "karaoke" && value !== "karaoke") {
+        stopKaraoke();
+        uploadInput.value = "";
+      }
+    },
+  });
 
   // === File chosen — autoplay-safe ===
   uploadInput.addEventListener("change", async e => {
@@ -226,10 +207,10 @@ document.addEventListener("click", (e) => {
     stopKaraoke(); // clean start
     isPlaying = true;
 
-    const url = URL.createObjectURL(file);
+    currentBlobUrl = URL.createObjectURL(file);
     const isVideo = file.type.startsWith("video/");
     mediaPlayer = document.createElement(isVideo ? "video" : "audio");
-    mediaPlayer.src = url;
+    mediaPlayer.src = currentBlobUrl;
     mediaPlayer.style.display = "none";
     mediaPlayer.volume = 0.9;
     if (isVideo) {
@@ -252,7 +233,7 @@ document.addEventListener("click", (e) => {
     pauseBtn.style.display = "block";
     clearInterval(progressUpdater);
     progressUpdater = setInterval(() => {
-      if (!mediaPlayer.duration) return;
+      if (!mediaPlayer || !mediaPlayer.duration) return;
       const percent = (mediaPlayer.currentTime / mediaPlayer.duration) * 100;
       progressBar.style.width = `${percent}%`;
     }, 100);
@@ -276,16 +257,49 @@ document.addEventListener("click", (e) => {
         alignItems: "center",
         justifyContent: "center",
         zIndex: "9999",
+        cursor: "pointer",
       });
       document.body.appendChild(overlay);
       const tapToPlay = async () => {
-        await mediaPlayer.play();
+        try { await mediaPlayer.play(); } catch {}
         overlay.remove();
-        document.removeEventListener("click", tapToPlay);
-        document.removeEventListener("touchstart", tapToPlay);
       };
       document.addEventListener("click", tapToPlay, { once: true });
       document.addEventListener("touchstart", tapToPlay, { once: true });
     }
   });
+
+  // === Cleanup ===
+  window._modeCleanup = function () {
+    stopKaraoke();
+
+    // Remove event listeners
+    window.removeEventListener("resize", resizeCanvas);
+    karaokeBtn.removeEventListener("click", onKaraokeClick);
+
+    // Remove DOM elements
+    uploadInput.remove();
+    progressContainer.remove();
+    pauseBtn.remove();
+
+    // Restore original _modeName property descriptor
+    try {
+      if (origDescriptor) {
+        Object.defineProperty(window, "_modeName", origDescriptor);
+      } else {
+        // Was a simple assignment — restore as data property
+        const val = _modeNameValue;
+        Object.defineProperty(window, "_modeName", {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: val,
+        });
+      }
+    } catch {}
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  window._modeName = "karaoke";
 })();

@@ -36,20 +36,29 @@
   imgs.food.src = "food1.png";
   imgs.conehead.src = "conehead.png";
 
-  // === Sounds (Duck Quack + Conehead Sound) ===
-const QUACK_SRC = "quack.mp3";
-const CONEHEAD_SRC = "conehead.mp3";
+  // === Sounds (pooled to avoid memory leak) ===
+  const soundPool = {
+    quack:    [new Audio("quack.mp3"),    new Audio("quack.mp3"),    new Audio("quack.mp3")],
+    conehead: [new Audio("conehead.mp3"), new Audio("conehead.mp3")],
+  };
+  let _soundIdx = 0;
 
-function playSound(src, volume = 0.85) {
-  const a = new Audio(src);
-  a.preload = "auto";
-  a.volume = volume;
-  a.play().catch(() => {});
-}
+  function playSound(key, volume = 0.85) {
+    const pool = soundPool[key];
+    if (!pool) return;
+    const s = pool[_soundIdx % pool.length];
+    _soundIdx++;
+    try {
+      s.pause();
+      s.currentTime = 0;
+      s.volume = volume;
+      s.play().catch(() => {});
+    } catch {}
+  }
 
   // Unlock audio for iOS
   function unlockAudioOnce() {
-    const a = new Audio(QUACK_SRC);
+    const a = soundPool.quack[0];
     a.muted = true;
     a.play().then(() => {
       a.pause();
@@ -123,9 +132,9 @@ function playSound(src, volume = 0.85) {
     foods.push(f);
 
 // 🦆 Quack immediately when duck spawns
-if (type === "duck") playSound(QUACK_SRC);
+if (type === "duck") playSound("quack");
 // 🧠 Play conehead sound when it spawns
-if (type === "conehead") playSound(CONEHEAD_SRC);
+if (type === "conehead") playSound("conehead");
 }
 
   // === UI: Food Buttons ===
@@ -247,7 +256,7 @@ if (type === "conehead") playSound(CONEHEAD_SRC);
   }
 
   // === Click to wake up ===
-  canvas.addEventListener("click", (e) => {
+  function onWakeClick(e) {
     if (window._sleepClickBlocked) return;
     const p = getPos(e);
     const bedLeft = bed.x - bed.w / 2;
@@ -273,15 +282,19 @@ if (type === "conehead") playSound(CONEHEAD_SRC);
       pet.oldx = pet.x;
       pet.oldy = pet.y;
     }
-  });
+  }
+  canvas.addEventListener("click", onWakeClick);
 
   // === Events ===
-  canvas.addEventListener("mousedown", startDrag);
-  canvas.addEventListener("mousemove", moveDrag);
-  canvas.addEventListener("mouseup", endDrag);
-  canvas.addEventListener("touchstart", startDrag);
-  canvas.addEventListener("touchmove", moveDrag);
-  canvas.addEventListener("touchend", endDrag);
+  const canvasListeners = [
+    ["mousedown", startDrag],
+    ["mousemove", moveDrag],
+    ["mouseup", endDrag],
+    ["touchstart", startDrag, { passive: false }],
+    ["touchmove", moveDrag, { passive: false }],
+    ["touchend", endDrag],
+  ];
+  canvasListeners.forEach(([ev, fn, opts]) => canvas.addEventListener(ev, fn, opts || false));
 
   // === Resize ===
   function onResize() {
@@ -318,16 +331,16 @@ if (type === "conehead") playSound(CONEHEAD_SRC);
       f.y += f.vy;
 
       // 🦆 Quack when duck lands
-if (f.type === "duck" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
-  f.soundPlayed = true;
-  playSound(QUACK_SRC);
-}
+      if (f.type === "duck" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
+        f.soundPlayed = true;
+        playSound("quack");
+      }
 
-// 🧠 Conehead sound when landing
-if (f.type === "conehead" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
-  f.soundPlayed = true;
-  playSound(CONEHEAD_SRC);
-}
+      // 🧠 Conehead sound when landing
+      if (f.type === "conehead" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= groundY) {
+        f.soundPlayed = true;
+        playSound("conehead");
+      }
 
       if (f.y + f.h / 2 >= groundY) {
         f.y = groundY - f.h / 2;
@@ -411,7 +424,10 @@ if (f.type === "conehead" && !f.soundPlayed && f.vy > 0 && f.y + f.h / 2 >= grou
   window._modeCleanup = function () {
     cancelAnimationFrame(raf);
     window.removeEventListener("resize", onResize);
+    canvasListeners.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
+    canvas.removeEventListener("click", onWakeClick);
     panel.remove();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
   window._modeName = "sleep";

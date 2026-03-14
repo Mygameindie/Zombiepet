@@ -145,10 +145,6 @@
     drawPet();
     drawFoods();
     collide();
-    // debug overlay
-    ctx.fillStyle = 'black';
-    ctx.font = '16px sans-serif';
-    ctx.fillText('FEED MODE ACTIVE', 12, 24);
     raf = requestAnimationFrame(loop);
   }
   loop();
