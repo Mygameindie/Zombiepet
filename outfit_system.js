@@ -17,7 +17,6 @@
       fall: createImg(`${prefix}_fall.png`),
       fly0: createImg(`${prefix}_fly0.png`),
       fly1: createImg(`${prefix}_fly1.png`),
-      // ✅ add sleep state support (optional asset)
       sleep: createImg(`${prefix}_sleep.png`),
     };
   }
@@ -58,6 +57,16 @@
   }
   updateButtonLabel();
 
+  // Returns sorted outfit IDs, always including base (0) at the front.
+  function getOutfitCycleList() {
+    const ids = window.outfits
+      ? Object.keys(window.outfits).map(n => Number(n)).filter(n => Number.isFinite(n))
+      : [];
+    ids.sort((a, b) => a - b);
+    if (!ids.includes(0)) ids.unshift(0);
+    return Array.from(new Set(ids));
+  }
+
   if (!clothesBtn._outfitListenerBound) {
     clothesBtn._outfitListenerBound = true;
 
@@ -65,19 +74,22 @@
       // ❌ no changing in shower
       if (window._modeName === "shower") return;
 
-      const max = 4;
+      const cycle = getOutfitCycleList();
+      if (!cycle.length) { window.currentOutfit = 0; updateButtonLabel(); return; }
 
-      // advance, skipping outfits with missing stand image (common in partial asset packs)
-      for (let i = 0; i <= max; i++) {
-        window.currentOutfit++;
-        if (window.currentOutfit > max) window.currentOutfit = 0;
+      let idx = cycle.indexOf(window.currentOutfit);
+      if (idx < 0) idx = 0;
 
-        if (window.currentOutfit === 0) break;
+      // advance, skipping outfits with missing stand image
+      for (let step = 0; step < cycle.length; step++) {
+        idx = (idx + 1) % cycle.length;
+        const nextId = cycle[idx];
+        window.currentOutfit = nextId;
 
-        const set = window.outfits && window.outfits[window.currentOutfit];
+        if (nextId === 0) break;
+
+        const set = window.outfits && window.outfits[nextId];
         const stand = set && set.stand;
-
-        // accept if not failed; may still be loading but will render once ready
         if (stand && !stand._failed) break;
       }
 
@@ -96,7 +108,8 @@
   // Call this AFTER you draw the base image in any mode.
   // state can be: "stand" | "fall" | "fly0" | "fly1" | "sleep"
   // ✅ returns true if something was drawn, else false
-  window.drawOutfitOverlay = function (ctx, state, x, y, w, h) {
+  // Optional petIndex param (ignored for single-pet, kept for API compat)
+  window.drawOutfitOverlay = function (ctx, state, x, y, w, h, petIndex) {
     if (window._modeName === "shower") return false;           // shower never shows clothes
     const id = (typeof window.currentOutfit === "number") ? window.currentOutfit : 0;
     if (id === 0) return false;                                 // base
@@ -122,7 +135,7 @@
   };
 
   window.exitShowerClothesRules = function () {
-    // ✅ restore previous outfit if available (and not shower)
+    // ✅ restore previous outfit if available
     if (typeof window._prevOutfitBeforeShower === "number") {
       window.currentOutfit = window._prevOutfitBeforeShower;
       delete window._prevOutfitBeforeShower;
@@ -130,4 +143,9 @@
     if (window.clothesBtn) window.clothesBtn.style.display = "block";
     updateButtonLabel();
   };
+
+  // Expose setActivePet (no-op for single pet, kept for API compatibility)
+  if (!window.setActivePet) {
+    window.setActivePet = function () {};
+  }
 })();

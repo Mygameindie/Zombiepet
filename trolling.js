@@ -1,11 +1,14 @@
 // ===========================================================
-// 😈 TROLL MODE (Scroll Bar + Hammer Hold + Butter + Water + Mobile)
+// 😈 TROLL MODE — Hammer (click-to-arm + pixel-perfect hit) + Butter + Water
+// Hammer: arm it, then click/tap the pet → swing animation + sound
+// Butter & Water: Zombiepet-original interactions
 // ===========================================================
 
 (() => {
   window._modeName = "trolling";
 
   const canvas = document.getElementById("canvas");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
 
   // === Resize ===
@@ -15,27 +18,36 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     groundY = canvas.height - groundHeight;
+    pet.x = canvas.width / 2 - pet.w / 2;
+    pet.y = groundY - pet.h;
   }
-  resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
 
   // === Base Pet ===
-  const baseImage = new Image();
-  baseImage.src = "base.png";
-  const pet = { x: canvas.width / 2 - 150, y: groundY - 400, w: 400, h: 400 };
+  function createImg(src) {
+    const img = new Image();
+    img._failed = false;
+    img.onerror = () => { img._failed = true; };
+    img.src = src;
+    return img;
+  }
 
-  // 🧩 Preload variants
-  const baseHammer = new Image();
-  baseHammer.src = "base_hammer.png";
-  const baseButter = new Image();
-  baseButter.src = "base_butter.png";
-  const baseWet = new Image();
-  baseWet.src = "base_wet.png";
+  const imgs = {
+    normal: createImg("base.png"),
+    hurt:   createImg("base_disgust.png"),
+    butter: createImg("base_butter.png"),
+    wet:    createImg("base_wet.png"),
+  };
+
+  const pet = { x: 0, y: 0, w: 400, h: 400, hurtUntil: 0, recoilUntil: 0 };
+
+  // init positions after pet defined
+  resizeCanvas();
 
   // === Sounds ===
   const hammerSound = new Audio("hammer.mp3");
   const butterSound = new Audio("butter.mp3");
-  const waterSound = new Audio("water.mp3");
+  const waterSound  = new Audio("water.mp3");
   let activeWaterAudio = null;
 
   [hammerSound, butterSound, waterSound].forEach((s) => {
@@ -48,19 +60,15 @@
       clone.volume = volume;
       clone.loop = loop;
       clone.currentTime = 0;
-      clone.play();
+      clone.play().catch(() => {});
+      if (window.SoundManager) SoundManager.register(clone);
       return clone;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
   function stopActiveWater() {
     if (activeWaterAudio) {
-      try {
-        activeWaterAudio.pause();
-        activeWaterAudio.currentTime = 0;
-      } catch {}
+      try { activeWaterAudio.pause(); activeWaterAudio.currentTime = 0; } catch {}
       activeWaterAudio = null;
     }
   }
@@ -77,7 +85,7 @@
   trollBar.style.transform = "translateX(-50%)";
   trollBar.style.zIndex = "999";
   trollBar.innerHTML = `
-    <button id="hammer-btn">🔨 Hammer</button>
+    <button id="hammer-btn" title="Arm hammer, then tap the pet">🔨 Hammer</button>
     <button id="butter-btn">🧈 Butter</button>
     <button id="watering-btn">💧 Water</button>
     <button id="remove-btn">❌ Remove</button>
@@ -88,7 +96,6 @@
   function enableDragScroll(scrollElement) {
     let isDown = false;
     let startX, scrollLeft;
-
     const start = (e) => {
       isDown = true;
       startX = (e.touches ? e.touches[0].pageX : e.pageX) - scrollElement.offsetLeft;
@@ -99,10 +106,8 @@
       if (!isDown) return;
       e.preventDefault();
       const x = (e.touches ? e.touches[0].pageX : e.pageX) - scrollElement.offsetLeft;
-      const walk = (x - startX) * 1.5;
-      scrollElement.scrollLeft = scrollLeft - walk;
+      scrollElement.scrollLeft = scrollLeft - (x - startX) * 1.5;
     };
-
     scrollElement.addEventListener("mousedown", start);
     scrollElement.addEventListener("touchstart", start, { passive: false });
     scrollElement.addEventListener("mouseup", end);
@@ -114,44 +119,155 @@
   enableDragScroll(trollBar);
 
   // ===========================================================
-  // BUTTON LOGIC
+  // 🔨 HAMMER — click to arm, then click pet (pixel-perfect)
   // ===========================================================
-  const hammerBtn = document.getElementById("hammer-btn");
-  const butterBtn = document.getElementById("butter-btn");
-  const waterBtn = document.getElementById("watering-btn");
-  const removeBtn = document.getElementById("remove-btn");
+  const hammerCursor = document.createElement("div");
+  hammerCursor.id = "hammer-cursor";
+  hammerCursor.textContent = "🔨";
+  hammerCursor.style.display = "none";
+  document.body.appendChild(hammerCursor);
 
-  // ===========================================================
-  // 🔨 HAMMER MODE (press/hold = hammer face, release = normal)
-  // ===========================================================
-  function hammerDown(e) {
-    e.preventDefault(); // prevent touch highlight
-    baseImage.src =
-      baseHammer.complete && baseHammer.naturalWidth > 0
-        ? baseHammer.src
-        : "base_hammer.png";
-    playSound(hammerSound);
+  // Inject CSS animation so it always works regardless of external stylesheet
+  const hammerStyle = document.createElement("style");
+  hammerStyle.textContent = `
+    #hammer-cursor {
+      position: fixed;
+      left: 0; top: 0;
+      transform: translate(-50%, -55%) rotate(-18deg);
+      font-size: 48px;
+      pointer-events: none;
+      z-index: 1000;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,.25));
+    }
+    #hammer-cursor.swing {
+      animation: hammerSwing .32s ease-in-out;
+      transform-origin: 70% 30%;
+    }
+    @keyframes hammerSwing {
+      0%   { transform: translate(-50%, -55%) rotate(-18deg); }
+      55%  { transform: translate(-50%, -55%) rotate(65deg) translateY(6px); }
+      100% { transform: translate(-50%, -55%) rotate(-18deg); }
+    }
+    #troll-bar button.active { outline: 2px solid rgba(255,255,255,.65); }
+  `;
+  document.head.appendChild(hammerStyle);
+
+  let hammerArmed = false;
+  let isSwinging = false;
+
+  const hammerBtn  = document.getElementById("hammer-btn");
+  const butterBtn  = document.getElementById("butter-btn");
+  const waterBtn   = document.getElementById("watering-btn");
+  const removeBtn  = document.getElementById("remove-btn");
+
+  function setHammerArmed(on) {
+    hammerArmed = !!on;
+    hammerBtn.classList.toggle("active", hammerArmed);
+    hammerCursor.style.display = "none";
   }
 
-  function hammerUp() {
-    baseImage.src = "base.png";
+  hammerBtn.addEventListener("click", () => setHammerArmed(!hammerArmed));
+
+  // ===========================================================
+  // 🎯 Pixel-perfect hit test (opaque pixels only)
+  // ===========================================================
+  const alphaMask = { data: null, w: 0, h: 0 };
+  const ALPHA_THRESHOLD = 10;
+
+  function rebuildAlphaMask(img) {
+    try {
+      const oc = document.createElement("canvas");
+      oc.width  = img.naturalWidth  || img.width;
+      oc.height = img.naturalHeight || img.height;
+      const octx = oc.getContext("2d", { willReadFrequently: true });
+      octx.drawImage(img, 0, 0);
+      const id = octx.getImageData(0, 0, oc.width, oc.height);
+      alphaMask.data = id.data;
+      alphaMask.w = oc.width;
+      alphaMask.h = oc.height;
+    } catch {
+      alphaMask.data = null;
+    }
   }
 
-  // Desktop + Mobile listeners
-  hammerBtn.addEventListener("mousedown", hammerDown);
-  hammerBtn.addEventListener("touchstart", hammerDown, { passive: false });
-  ["mouseup", "mouseleave", "touchend", "touchcancel"].forEach((ev) =>
-    hammerBtn.addEventListener(ev, hammerUp)
-  );
+  imgs.normal.addEventListener("load", () => rebuildAlphaMask(imgs.normal));
+  if (imgs.normal.complete && imgs.normal.naturalWidth > 0) rebuildAlphaMask(imgs.normal);
+
+  function getCanvasPoint(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches && e.touches[0];
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top)  * (canvas.height / rect.height),
+      clientX,
+      clientY,
+    };
+  }
+
+  function isOpaqueHit(px, py) {
+    if (px < pet.x || px > pet.x + pet.w || py < pet.y || py > pet.y + pet.h) return false;
+    // fallback to rect if mask not ready
+    if (!alphaMask.data || !alphaMask.w || !alphaMask.h) return true;
+    const ix = Math.floor((px - pet.x) * (alphaMask.w / pet.w));
+    const iy = Math.floor((py - pet.y) * (alphaMask.h / pet.h));
+    if (ix < 0 || ix >= alphaMask.w || iy < 0 || iy >= alphaMask.h) return false;
+    return alphaMask.data[(iy * alphaMask.w + ix) * 4 + 3] > ALPHA_THRESHOLD;
+  }
+
+  // ===========================================================
+  // 🔨 Hit + timing
+  // ===========================================================
+  const SWING_MS  = 320;
+  const IMPACT_AT = 0.62;
+
+  function doHammerHit(didHit, clientX, clientY) {
+    if (!hammerArmed || isSwinging) return;
+    isSwinging = true;
+
+    hammerCursor.style.left    = clientX + "px";
+    hammerCursor.style.top     = clientY + "px";
+    hammerCursor.style.display = "block";
+
+    hammerCursor.classList.remove("swing");
+    void hammerCursor.offsetWidth; // force reflow to restart animation
+    hammerCursor.classList.add("swing");
+
+    const impactTimer = setTimeout(() => {
+      if (didHit) {
+        playSound(hammerSound, 0.95);
+        pet.recoilUntil = Date.now() + 120;
+        pet.hurtUntil   = Date.now() + 450;
+      }
+    }, Math.floor(SWING_MS * IMPACT_AT));
+
+    setTimeout(() => {
+      clearTimeout(impactTimer);
+      hammerCursor.classList.remove("swing");
+      hammerCursor.style.display = "none";
+      isSwinging = false;
+    }, SWING_MS + 30);
+  }
+
+  function onCanvasDown(e) {
+    if (!hammerArmed) return;
+    const p = getCanvasPoint(e);
+    const hit = isOpaqueHit(p.x, p.y);
+    e.preventDefault();
+    doHammerHit(hit, p.clientX, p.clientY);
+  }
+
+  canvas.addEventListener("mousedown", onCanvasDown);
+  canvas.addEventListener("touchstart", onCanvasDown, { passive: false });
 
   // ===========================================================
   // 🧈 BUTTER MODE
   // ===========================================================
+  let currentState = "normal"; // "normal" | "butter" | "wet"
+
   butterBtn.addEventListener("click", () => {
-    baseImage.src =
-      baseButter.complete && baseButter.naturalWidth > 0
-        ? baseButter.src
-        : "base_butter.png";
+    currentState = "butter";
     playSound(butterSound);
   });
 
@@ -159,6 +275,11 @@
   // 💧 WATER MODE — toggle active state
   // ===========================================================
   let waterMode = false;
+  const wateringCan = new Image();
+  wateringCan.src = "wateringcan.png";
+  const can = { x: 100, y: 100, w: 120, h: 120, dragging: false, offsetX: 0, offsetY: 0 };
+  let touchingPet = false;
+
   waterBtn.addEventListener("click", () => {
     waterMode = !waterMode;
     waterBtn.style.backgroundColor = waterMode ? "#03a9f4" : "";
@@ -167,14 +288,9 @@
       can.dragging = false;
       can.x = 100;
       can.y = 100;
+      if (currentState === "wet") currentState = "normal";
     }
   });
-
-  // === Watering Can ===
-  const wateringCan = new Image();
-  wateringCan.src = "wateringcan.png";
-  const can = { x: 100, y: 100, w: 120, h: 120, dragging: false, offsetX: 0, offsetY: 0 };
-  let touchingPet = false;
 
   function isHit(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -185,8 +301,8 @@
     return { x: t.clientX, y: t.clientY };
   }
 
-  function startDrag(e) {
-    if (!waterMode) return;
+  function startWaterDrag(e) {
+    if (!waterMode || hammerArmed) return;
     const pos = getPointerPos(e);
     if (pos.x >= can.x && pos.x <= can.x + can.w && pos.y >= can.y && pos.y <= can.y + can.h) {
       can.dragging = true;
@@ -196,15 +312,16 @@
     }
   }
 
-  function dragMove(e) {
+  function dragWaterMove(e) {
     if (!can.dragging) return;
     const pos = getPointerPos(e);
     can.x = pos.x - can.offsetX;
     can.y = pos.y - can.offsetY;
 
-    const hit = isHit(can, pet);
+    const petRect = { x: pet.x, y: pet.y, w: pet.w, h: pet.h };
+    const hit = isHit(can, petRect);
     if (hit && !touchingPet) {
-      baseImage.src = baseWet.complete ? baseWet.src : "base_wet.png";
+      currentState = "wet";
       stopActiveWater();
       activeWaterAudio = playSound(waterSound, 0.9, true);
       touchingPet = true;
@@ -215,7 +332,7 @@
     e.preventDefault();
   }
 
-  function endDrag() {
+  function endWaterDrag() {
     if (can.dragging) {
       can.dragging = false;
       stopActiveWater();
@@ -225,26 +342,30 @@
     }
   }
 
-  const events = [
-    ["mousedown", startDrag],
-    ["touchstart", startDrag],
-    ["mousemove", dragMove],
-    ["touchmove", dragMove],
-    ["mouseup", endDrag],
-    ["mouseleave", endDrag],
-    ["touchend", endDrag],
-    ["touchcancel", endDrag],
+  const waterEvents = [
+    ["mousedown", startWaterDrag],
+    ["touchstart", startWaterDrag],
+    ["mousemove", dragWaterMove],
+    ["touchmove", dragWaterMove],
+    ["mouseup", endWaterDrag],
+    ["mouseleave", endWaterDrag],
+    ["touchend", endWaterDrag],
+    ["touchcancel", endWaterDrag],
   ];
-  events.forEach(([ev, fn]) => canvas.addEventListener(ev, fn, { passive: false }));
+  waterEvents.forEach(([ev, fn]) => canvas.addEventListener(ev, fn, { passive: false }));
 
   // ===========================================================
   // ❌ REMOVE BUTTON
   // ===========================================================
   removeBtn.addEventListener("click", () => {
-    baseImage.src = "base.png";
+    currentState = "normal";
+    setHammerArmed(false);
+    pet.hurtUntil = 0;
+    pet.recoilUntil = 0;
     stopActiveWater();
     waterMode = false;
     waterBtn.style.backgroundColor = "";
+    touchingPet = false;
   });
 
   // ===========================================================
@@ -255,15 +376,31 @@
   function draw() {
     if (!running) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ground
     ctx.fillStyle = "#5c4033";
     ctx.fillRect(0, groundY, canvas.width, groundHeight);
 
-    if (baseImage.complete && baseImage.naturalWidth > 0)
-      ctx.drawImage(baseImage, pet.x, pet.y, pet.w, pet.h);
+    const now = Date.now();
+    const recoil   = (pet.recoilUntil && now < pet.recoilUntil) ? 10 : 0;
+    const wantHurt = (pet.hurtUntil   && now < pet.hurtUntil);
+
+    // pick image: hurt takes priority, then state
+    let img;
+    if (wantHurt)               img = imgs.hurt;
+    else if (currentState === "butter") img = imgs.butter;
+    else if (currentState === "wet")    img = imgs.wet;
+    else                                img = imgs.normal;
+
+    if (img && !img._failed && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, pet.x, pet.y + recoil, pet.w, pet.h);
+    }
+
     // 👕 Outfit overlay
     if (window.drawOutfitOverlay)
-      window.drawOutfitOverlay(ctx, "stand", pet.x, pet.y, pet.w, pet.h);
+      window.drawOutfitOverlay(ctx, "stand", pet.x, pet.y + recoil, pet.w, pet.h);
 
+    // 💧 Watering can
     if (waterMode && wateringCan.complete && wateringCan.naturalWidth > 0)
       ctx.drawImage(wateringCan, can.x, can.y, can.w, can.h);
 
@@ -278,11 +415,14 @@
     running = false;
     cancelAnimationFrame(rafId);
     trollBar?.remove();
+    hammerCursor?.remove();
+    hammerStyle?.remove();
     window.removeEventListener("resize", resizeCanvas);
-    events.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
+    canvas.removeEventListener("mousedown", onCanvasDown);
+    canvas.removeEventListener("touchstart", onCanvasDown);
+    waterEvents.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
     stopActiveWater();
     if (window.SoundManager) SoundManager.stopAll();
-    touchingPet = false;
     waterMode = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
