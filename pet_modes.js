@@ -142,6 +142,14 @@ document.getElementById("xox-btn").addEventListener("click", () => {
   loadMode("pet_xox.js", "XOX Mode");
 });
 
+document.getElementById("doctor-btn").addEventListener("click", () => {
+  loadMode("doctor_mode.js", "Doctor Mode");
+});
+
+document.getElementById("playground-btn").addEventListener("click", () => {
+  loadMode("playground_mode.js", "Playground Mode");
+});
+
   // Auto-load Normal Mode
   loadMode("pet_script.js", "Normal Mode");
 })();
