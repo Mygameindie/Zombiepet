@@ -53,8 +53,8 @@
   // ==============================
   // Pet state
   // ==============================
-  const PET_W = 300;
-  const PET_H = 350;
+  const PET_W = 200;
+  const PET_H = 225;
   const gravity = 1.2;
 
   const pet = {
