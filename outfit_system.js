@@ -40,7 +40,7 @@
     clothesBtn = document.createElement("button");
     clothesBtn.innerText = "Change Clothes";
     clothesBtn.style.position = "fixed";
-    clothesBtn.style.bottom = "20px";
+    clothesBtn.style.bottom = "70px";
     clothesBtn.style.right = "20px";
     clothesBtn.style.padding = "10px 20px";
     clothesBtn.style.fontSize = "16px";
