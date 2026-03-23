@@ -125,9 +125,13 @@
       w,
       h,
       vy: 0,
+      vx: 0,
       type,
       eaten: false,
       soundPlayed: false,
+      dragging: false,
+      dragOffsetX: 0,
+      dragOffsetY: 0,
     };
     foods.push(f);
 
@@ -143,7 +147,7 @@ if (type === "conehead") playSound("conehead");
   Object.assign(panel.style, {
     position: "fixed",
     right: "20px",
-    bottom: "20px",
+    bottom: "80px",
     display: "flex",
     flexDirection: "column",
     gap: "8px",
@@ -179,6 +183,25 @@ if (type === "conehead") playSound("conehead");
   makeBtn("🐟 Fish", "fish");
   makeBtn("🧠 Conehead", "conehead");
 
+  // Clear button
+  const clearBtn = document.createElement("button");
+  clearBtn.textContent = "🗑️ Clear";
+  Object.assign(clearBtn.style, {
+    fontSize: "18px",
+    padding: "6px 10px",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    background: "rgba(255,100,100,0.6)",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+    transition: "0.2s",
+    marginTop: "4px",
+  });
+  clearBtn.onmouseenter = () => (clearBtn.style.background = "rgba(255,100,100,0.9)");
+  clearBtn.onmouseleave = () => (clearBtn.style.background = "rgba(255,100,100,0.6)");
+  clearBtn.onclick = () => { foods.length = 0; draggingFood = null; };
+  panel.appendChild(clearBtn);
+
   // === Helpers ===
   function getPos(e) {
     const r = canvas.getBoundingClientRect();
@@ -188,8 +211,12 @@ if (type === "conehead") playSound("conehead");
   }
 
   // === Drag Logic ===
+  let draggingFood = null;
+
   function startDrag(e) {
     const p = getPos(e);
+
+    // Pet takes priority
     if (
       pet.visible &&
       p.x > pet.x - pet.w / 2 &&
@@ -200,8 +227,31 @@ if (type === "conehead") playSound("conehead");
       pet.dragging = true;
       vx = vy = 0;
       e.preventDefault();
+      return;
     }
 
+    // Food items
+    for (let i = foods.length - 1; i >= 0; i--) {
+      const f = foods[i];
+      if (f.eaten) continue;
+      if (
+        p.x > f.x - f.w / 2 &&
+        p.x < f.x + f.w / 2 &&
+        p.y > f.y - f.h / 2 &&
+        p.y < f.y + f.h / 2
+      ) {
+        draggingFood = f;
+        f.dragging = true;
+        f.dragOffsetX = p.x - f.x;
+        f.dragOffsetY = p.y - f.y;
+        f.vx = 0;
+        f.vy = 0;
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // Blanket
     if (
       blanket.visible &&
       p.x > blanket.x - blanket.w / 2 &&
@@ -219,6 +269,10 @@ if (type === "conehead") playSound("conehead");
     if (pet.dragging) {
       pet.x = p.x;
       pet.y = p.y;
+    } else if (draggingFood) {
+      draggingFood.x = p.x - draggingFood.dragOffsetX;
+      draggingFood.y = p.y - draggingFood.dragOffsetY;
+      if (e.touches) e.preventDefault();
     } else if (blanket.dragging) {
       blanket.x = p.x;
       blanket.y = p.y;
@@ -240,6 +294,11 @@ if (type === "conehead") playSound("conehead");
         pet.visible = false;
         vx = vy = 0;
       }
+    }
+
+    if (draggingFood) {
+      draggingFood.dragging = false;
+      draggingFood = null;
     }
 
     if (blanket.dragging) {
@@ -331,7 +390,7 @@ if (type === "conehead") playSound("conehead");
 
     // Food motion
     for (const f of foods) {
-      if (f.eaten) continue;
+      if (f.eaten || f.dragging) continue;
       f.vy += gravity * 0.5;
       f.y += f.vy;
 
@@ -352,9 +411,9 @@ if (type === "conehead") playSound("conehead");
         f.vy = 0;
       }
 
-      // 🍴 Eat collision
+      // 🍴 Eat collision (skip while dragging pet or the food itself)
       if (
-        pet.visible &&
+        pet.visible && !pet.dragging && !f.dragging &&
         Math.abs(pet.x - f.x) < (pet.w + f.w) / 2 - 40 &&
         Math.abs(pet.y - f.y) < (pet.h + f.h) / 2 - 40
       ) {
