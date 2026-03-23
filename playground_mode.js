@@ -56,7 +56,6 @@
   const PET_W = 400;
   const PET_H = 450;
   const gravity = 1.2;
-  const walkSpeed = 1.8;
 
   const pet = {
     x: canvas.width * 0.5,
@@ -168,11 +167,6 @@
 
   function updatePet() {
     if (pet.jumpCooldown > 0) pet.jumpCooldown--;
-
-    // Walk back and forth
-    pet.x += walkSpeed * pet.dir;
-    if (pet.x > canvas.width * 0.75) pet.dir = -1;
-    if (pet.x < canvas.width * 0.25) pet.dir = 1;
 
     // Gravity
     if (!pet.onGround) {
