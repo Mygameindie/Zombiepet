@@ -60,9 +60,13 @@
   const pet = {
     x: canvas.width * 0.5,
     y: 0,
+    vx: 0,
     vy: 0,
     dir: 1,
     onGround: true,
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
     frame: 0,
     frameTimer: 0,
     jumpCooldown: 0,
@@ -97,6 +101,27 @@
 
   function onDown(e) {
     const p = getPtr(e);
+
+    // Check pet first
+    if (
+      p.x >= pet.x - PET_W / 2 &&
+      p.x <= pet.x + PET_W / 2 &&
+      p.y >= pet.y - PET_H / 2 &&
+      p.y <= pet.y + PET_H / 2
+    ) {
+      pet.dragging = true;
+      pet.vx = 0;
+      pet.vy = 0;
+      pet.onGround = false;
+      offsetX = p.x - pet.x;
+      offsetY = p.y - pet.y;
+      pet.lastX = p.x;
+      pet.lastY = p.y;
+      e.preventDefault();
+      return;
+    }
+
+    // Check ball
     const dx = p.x - ball.x;
     const dy = p.y - ball.y;
     if (Math.sqrt(dx * dx + dy * dy) <= BALL_R + 12) {
@@ -112,8 +137,19 @@
   }
 
   function onMove(e) {
-    if (!ball.dragging) return;
     const p = getPtr(e);
+    if (pet.dragging) {
+      pet.lastX = pet.x;
+      pet.lastY = pet.y;
+      pet.x = p.x - offsetX;
+      pet.y = p.y - offsetY;
+      // Update facing direction while dragging
+      if (pet.x - pet.lastX < 0) pet.dir = -1;
+      else if (pet.x - pet.lastX > 0) pet.dir = 1;
+      if (e.touches) e.preventDefault();
+      return;
+    }
+    if (!ball.dragging) return;
     ball.lastX = ball.x;
     ball.lastY = ball.y;
     ball.x = p.x - offsetX;
@@ -122,6 +158,12 @@
   }
 
   function onUp() {
+    if (pet.dragging) {
+      pet.dragging = false;
+      pet.vx = (pet.x - pet.lastX) * 1.4;
+      pet.vy = (pet.y - pet.lastY) * 1.4;
+      return;
+    }
     if (!ball.dragging) return;
     ball.dragging = false;
     ball.vx = (ball.x - ball.lastX) * 1.4;
@@ -166,20 +208,45 @@
   }
 
   function updatePet() {
+    if (pet.dragging) return;
+
     if (pet.jumpCooldown > 0) pet.jumpCooldown--;
 
-    // Gravity
-    if (!pet.onGround) {
-      pet.vy += gravity;
-      pet.y += pet.vy;
-      if (pet.y + PET_H / 2 >= groundY) {
-        pet.y = groundY - PET_H / 2;
-        pet.vy = 0;
-        pet.onGround = true;
-      }
+    // Apply velocity and gravity
+    pet.vy += gravity;
+    pet.x += pet.vx;
+    pet.y += pet.vy;
+
+    // Ground bounce
+    if (pet.y + PET_H / 2 >= groundY) {
+      pet.y = groundY - PET_H / 2;
+      pet.vy *= -0.45;
+      pet.vx *= 0.85;
+      if (Math.abs(pet.vy) < 2) { pet.vy = 0; pet.onGround = true; }
+      else pet.onGround = false;
+    } else {
+      pet.onGround = false;
     }
 
-    // Ball collision → pet jumps
+    // Wall bounce
+    if (pet.x - PET_W / 2 < 0) {
+      pet.x = PET_W / 2;
+      pet.vx = Math.abs(pet.vx) * 0.7;
+      pet.dir = 1;
+    }
+    if (pet.x + PET_W / 2 > canvas.width) {
+      pet.x = canvas.width - PET_W / 2;
+      pet.vx = -Math.abs(pet.vx) * 0.7;
+      pet.dir = -1;
+    }
+
+    // Ceiling bounce
+    if (pet.y - PET_H / 2 < 0) {
+      pet.y = PET_H / 2;
+      pet.vy = Math.abs(pet.vy) * 0.6;
+    }
+
+    // Ball collision → bounce pet
     const dx = ball.x - pet.x;
     const dy = ball.y - (pet.y - PET_H * 0.15);
     const dist = Math.sqrt(dx * dx + dy * dy);
