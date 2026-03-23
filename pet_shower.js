@@ -20,6 +20,7 @@
   let baseImage = new Image();
   baseImage.src = "base_bath.png";
   let bathing = false; // tracks whether sponge is touching pet
+  let lastShowerStatTime = 0; // cooldown for PetStats.shower calls
   let petX = canvas.width / 2 - 150;
   let petY = groundY - 400;
 
@@ -366,6 +367,14 @@
     } else if (!touching && bathing && sponge.dragging) {
       bathing = false;
       baseImage.src = "base_bath.png";
+    }
+    // Update cleanliness stat while sponge is actively scrubbing (once per second)
+    if (touching && sponge.dragging) {
+      const now = Date.now();
+      if (now - lastShowerStatTime >= 1000) {
+        lastShowerStatTime = now;
+        if (window.PetStats) window.PetStats.shower(0);
+      }
     }
 
     drawHitbox();

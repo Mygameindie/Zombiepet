@@ -249,6 +249,9 @@ if (type === "conehead") playSound("conehead");
       if (overlapX && overlapY && bed.state === "preSleep") {
         blanket.visible = false;
         bed.state = "sleeping";
+        // Pause energy decay and start recovering energy
+        window._petsSleeping = window._petsSleeping || [];
+        window._petsSleeping[0] = true;
         window._sleepClickBlocked = true;
         setTimeout(() => (window._sleepClickBlocked = false), 100);
       }
@@ -272,6 +275,8 @@ if (type === "conehead") playSound("conehead");
       p.y < bedBottom
     ) {
       bed.state = "normal";
+      // Stop energy recovery, resume decay
+      if (window._petsSleeping) window._petsSleeping[0] = false;
       pet.visible = true;
       blanket.visible = true;
       pet.x = bed.x;
@@ -354,6 +359,11 @@ if (type === "conehead") playSound("conehead");
         Math.abs(pet.y - f.y) < (pet.h + f.h) / 2 - 40
       ) {
         f.eaten = true;
+        // duck and fish are liked; conehead is not
+        if (window.PetStats) {
+          const liked = f.type !== "conehead";
+          window.PetStats.feed(0, liked);
+        }
       }
     }
   }
@@ -411,6 +421,13 @@ if (type === "conehead") playSound("conehead");
     }
   }
 
+  // === Energy recovery while sleeping (2 pts/sec) ===
+  const sleepRecoveryInterval = setInterval(() => {
+    if (bed.state === "sleeping" && window.PetStats) {
+      window.PetStats.sleep(0, 1);
+    }
+  }, 500);
+
   // === Loop ===
   let raf = 0;
   function loop() {
@@ -427,6 +444,8 @@ if (type === "conehead") playSound("conehead");
   // === Cleanup ===
   window._modeCleanup = function () {
     cancelAnimationFrame(raf);
+    clearInterval(sleepRecoveryInterval);
+    if (window._petsSleeping) window._petsSleeping[0] = false;
     window.removeEventListener("resize", onResize);
     canvasListeners.forEach(([ev, fn]) => canvas.removeEventListener(ev, fn));
     canvas.removeEventListener("click", onWakeClick);
