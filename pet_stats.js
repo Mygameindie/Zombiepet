@@ -57,8 +57,11 @@
   // Sound mute state
   let muted = (saved && saved.muted === true);
 
-  // Garden inventory: foodKey → count
-  let inventory = (saved && saved.inventory) ? { ...saved.inventory } : {};
+  // Garden inventory: foodKey → count (defaults to 2 of each food)
+  function defaultInventory() {
+    return { fish: 2, garlic: 2, icelettuce: 2, brain: 2, duck: 2, candy: 2, spicy: 2 };
+  }
+  let inventory = (saved && saved.inventory) ? { ...saved.inventory } : defaultInventory();
 
   // --- Clamp helper ---
   function clamp(v) { return Math.max(0, Math.min(100, v)); }

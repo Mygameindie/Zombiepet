@@ -151,13 +151,14 @@
 
   function down(e) {
     const p = pos(e);
+    const PAD = 40; // generous hit area for easy grabbing
     for (const f of foods) {
       if (!f.visible) continue;
       if (
-        p.x > f.x - f.w / 2 &&
-        p.x < f.x + f.w / 2 &&
-        p.y > f.y - f.h / 2 &&
-        p.y < f.y + f.h / 2
+        p.x > f.x - f.w / 2 - PAD &&
+        p.x < f.x + f.w / 2 + PAD &&
+        p.y > f.y - f.h / 2 - PAD &&
+        p.y < f.y + f.h / 2 + PAD
       ) {
         activeFood = f;
         f.drag = true;
