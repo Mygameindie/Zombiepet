@@ -57,6 +57,9 @@
   // Sound mute state
   let muted = (saved && saved.muted === true);
 
+  // Garden inventory: foodKey → count
+  let inventory = (saved && saved.inventory) ? { ...saved.inventory } : {};
+
   // --- Clamp helper ---
   function clamp(v) { return Math.max(0, Math.min(100, v)); }
 
@@ -88,6 +91,7 @@
       pets: petStats.map(s => ({ ...s })),
       outfits: Array.isArray(window.currentOutfits) ? window.currentOutfits.slice() : [0],
       muted,
+      inventory: { ...inventory },
       savedAt: Date.now(),
     });
   }
@@ -258,6 +262,26 @@
     },
 
     save() { doSave(); },
+
+    // --- Garden inventory ---
+    addInventory(key, amount) {
+      inventory[key] = (inventory[key] || 0) + (amount || 1);
+      doSave();
+    },
+
+    getInventory() {
+      return { ...inventory };
+    },
+
+    useInventory(key) {
+      if ((inventory[key] || 0) > 0) {
+        inventory[key]--;
+        if (inventory[key] <= 0) delete inventory[key];
+        doSave();
+        return true;
+      }
+      return false;
+    },
   };
 
   // --- Start ---

@@ -348,7 +348,7 @@
   }
   enableDragScroll(spawnButtons);
 
-  // --- Button Events
+  // --- Button Events + Inventory badges ---
   const btnMap = {
     spawnFish: "fish",
     spawngarlic: "garlic",
@@ -358,11 +358,51 @@
     spawncandy: "candy",
     spawnSpicy: "spicy",
   };
+
+  // Map spawnMap key → button id (reverse of btnMap)
+  const keyToBtn = {};
+  for (const id in btnMap) keyToBtn[btnMap[id]] = id;
+
+  function refreshInventoryBadges() {
+    const inv = (window.PetStats && typeof window.PetStats.getInventory === 'function')
+      ? window.PetStats.getInventory()
+      : {};
+    for (const id in btnMap) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const key = btnMap[id];
+      const count = inv[key] || 0;
+      // Store original label once
+      if (!el.dataset.baseLabel) el.dataset.baseLabel = el.textContent;
+      if (count > 0) {
+        el.textContent = el.dataset.baseLabel + ' ×' + count;
+        el.style.outline = '2px solid #22c55e';
+      } else {
+        el.textContent = el.dataset.baseLabel;
+        el.style.outline = '';
+      }
+    }
+  }
+
   for (const id in btnMap) {
     const el = document.getElementById(id);
-    if (el) el.addEventListener("click", () => spawnFood(btnMap[id]));
+    if (el) el.addEventListener("click", () => {
+      const key = btnMap[id];
+      // Use one from inventory if available
+      if (window.PetStats && typeof window.PetStats.useInventory === 'function') {
+        window.PetStats.useInventory(key);
+      }
+      spawnFood(key);
+      refreshInventoryBadges();
+    });
   }
   document.getElementById("clearFoods").onclick = clearFoods;
+
+  // Register refresh hook for garden mode to call
+  window._refreshFeedToolbar = refreshInventoryBadges;
+
+  // Initial badge render
+  refreshInventoryBadges();
 
   // ===========================================================
   // 🧹 CLEANUP
@@ -373,6 +413,7 @@
     window.removeEventListener("resize", resizeCanvas);
     if (bubble) bubble.style.display = "none";
     if (spawnButtons) spawnButtons.remove();
+    window._refreshFeedToolbar = null;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 

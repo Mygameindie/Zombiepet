@@ -107,15 +107,6 @@
   }
 
   // ==============================
-  // Local bag inventory
-  // ==============================
-  const gardenBag = {};
-
-  function bagTotal() {
-    return Object.values(gardenBag).reduce((a, b) => a + b, 0);
-  }
-
-  // ==============================
   // Crops config
   // ==============================
   let crops = [];
@@ -244,10 +235,9 @@
   }
 
   // ==============================
-  // Bag DOM
+  // Bag DOM (shows shared inventory total)
   // ==============================
   let bagEl = null;
-  let feedBtnEl = null;
 
   function buildBag() {
     bagEl = document.createElement('div');
@@ -266,59 +256,32 @@
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: '4px',
+      gap: '2px',
       minWidth: '60px',
       transition: 'transform 0.15s',
     });
 
     const countEl = document.createElement('span');
     countEl.id = 'garden-bag-count';
-    countEl.textContent = '🎒 0';
     bagEl.appendChild(countEl);
 
-    feedBtnEl = document.createElement('button');
-    feedBtnEl.textContent = '🍽️ Feed';
-    Object.assign(feedBtnEl.style, {
-      display: 'none',
-      padding: '3px 10px',
-      borderRadius: '8px',
-      border: 'none',
-      background: '#22c55e',
-      color: 'white',
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontWeight: 'bold',
-    });
-    feedBtnEl.addEventListener('click', feedPetFromBag);
-    bagEl.appendChild(feedBtnEl);
+    const hintEl = document.createElement('span');
+    hintEl.textContent = '→ Feed Mode';
+    Object.assign(hintEl.style, { fontSize: '11px', color: '#6b7280' });
+    bagEl.appendChild(hintEl);
 
     document.body.appendChild(bagEl);
     updateBagUI();
   }
 
-  function updateBagUI() {
-    if (!bagEl) return;
-    const total = bagTotal();
-    const countEl = document.getElementById('garden-bag-count');
-    if (countEl) countEl.textContent = '🎒 ' + total;
-    if (feedBtnEl) feedBtnEl.style.display = total > 0 ? 'block' : 'none';
+  function getInventoryTotal() {
+    if (!window.PetStats) return 0;
+    return Object.values(window.PetStats.getInventory()).reduce((a, b) => a + b, 0);
   }
 
-  function feedPetFromBag() {
-    const total = bagTotal();
-    if (total === 0) return;
-    for (const key of Object.keys(gardenBag)) {
-      const count = gardenBag[key];
-      for (let i = 0; i < count; i++) {
-        if (window.PetStats && typeof window.PetStats.feed === 'function') {
-          window.PetStats.feed(0, true);
-        }
-      }
-      delete gardenBag[key];
-    }
-    updateBagUI();
-    feedbackText = '😋 Yummy!';
-    feedbackTimer = 90;
+  function updateBagUI() {
+    const countEl = document.getElementById('garden-bag-count');
+    if (countEl) countEl.textContent = '🎒 ' + getInventoryTotal();
   }
 
   // ==============================
@@ -359,8 +322,9 @@
       });
       setTimeout(() => {
         el.remove();
-        gardenBag[cropKey] = (gardenBag[cropKey] || 0) + 1;
+        if (window.PetStats) window.PetStats.addInventory(cropKey, 1);
         updateBagUI();
+        if (typeof window._refreshFeedToolbar === 'function') window._refreshFeedToolbar();
         if (bagEl) {
           bagEl.style.transform = 'scale(1.35)';
           setTimeout(() => { if (bagEl) bagEl.style.transform = ''; }, 180);
