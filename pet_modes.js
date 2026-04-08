@@ -154,6 +154,10 @@ document.getElementById("garden-btn").addEventListener("click", () => {
   loadMode("pet_garden.js", "Garden Mode");
 });
 
+document.getElementById("farm-btn").addEventListener("click", () => {
+  loadMode("pet_farm.js", "Farm Mode");
+});
+
   // Auto-load Normal Mode
   loadMode("pet_script.js", "Normal Mode");
 })();
