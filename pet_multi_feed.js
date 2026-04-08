@@ -373,14 +373,19 @@
       if (!el) continue;
       const key = btnMap[id];
       const count = inv[key] || 0;
-      // Store original label once
-      if (!el.dataset.baseLabel) el.dataset.baseLabel = el.textContent;
+      if (!el.dataset.baseLabel) el.dataset.baseLabel = el.textContent.replace(/ ×\d+$/, '').replace(/ 🌱.*$/, '');
       if (count > 0) {
         el.textContent = el.dataset.baseLabel + ' ×' + count;
+        el.disabled = false;
+        el.style.opacity = '1';
         el.style.outline = '2px solid #22c55e';
+        el.title = '';
       } else {
-        el.textContent = el.dataset.baseLabel;
+        el.textContent = el.dataset.baseLabel + ' 🌱';
+        el.disabled = true;
+        el.style.opacity = '0.45';
         el.style.outline = '';
+        el.title = 'Out of stock — grow more in Garden!';
       }
     }
   }
@@ -389,10 +394,8 @@
     const el = document.getElementById(id);
     if (el) el.addEventListener("click", () => {
       const key = btnMap[id];
-      // Use one from inventory if available
-      if (window.PetStats && typeof window.PetStats.useInventory === 'function') {
-        window.PetStats.useInventory(key);
-      }
+      if (!window.PetStats || (window.PetStats.getInventory()[key] || 0) <= 0) return;
+      window.PetStats.useInventory(key);
       spawnFood(key);
       refreshInventoryBadges();
     });
