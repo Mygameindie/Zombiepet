@@ -150,6 +150,10 @@ document.getElementById("playground-btn").addEventListener("click", () => {
   loadMode("playground_mode.js", "Playground Mode");
 });
 
+document.getElementById("garden-btn").addEventListener("click", () => {
+  loadMode("pet_garden.js", "Garden Mode");
+});
+
   // Auto-load Normal Mode
   loadMode("pet_script.js", "Normal Mode");
 })();

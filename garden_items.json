@@ -1,0 +1,10 @@
+{
+  "crops": [
+    { "key": "brain",    "label": "Brain",         "seedImg": "food1.png" },
+    { "key": "garlic",   "label": "Garlic",        "seedImg": "food2.png" },
+    { "key": "iceleaf",  "label": "Ice Leaf",      "seedImg": "food3.png" },
+    { "key": "bone",     "label": "Bone",          "seedImg": "food4.png" },
+    { "key": "candy",    "label": "Skull Candy",   "seedImg": "candy.png" },
+    { "key": "pepper",   "label": "Zombie Pepper", "seedImg": "chili.png" }
+  ]
+}
