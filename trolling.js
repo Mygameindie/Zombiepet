@@ -74,6 +74,59 @@
   }
 
   // ===========================================================
+  // 💔 HAPPINESS PENALTY
+  // ===========================================================
+  const TROLL_HAPPINESS_DAMAGE = 5;
+
+  function clampHappiness(value) {
+    return Math.max(0, Math.min(100, value));
+  }
+
+  function setHappinessValue(target, key, amount) {
+    if (!target || typeof target[key] !== "number") return null;
+    target[key] = clampHappiness(target[key] - amount);
+    return target[key];
+  }
+
+  function decreasePetHappiness(amount = TROLL_HAPPINESS_DAMAGE) {
+    let happiness = null;
+
+    // Support the most common global pet stat shapes without requiring a duplicate stat system.
+    happiness = setHappinessValue(window.petStats, "happiness", amount) ?? happiness;
+    happiness = setHappinessValue(window.petState, "happiness", amount) ?? happiness;
+    happiness = setHappinessValue(window.petData, "happiness", amount) ?? happiness;
+    happiness = setHappinessValue(window.PetStats, "happiness", amount) ?? happiness;
+
+    if (typeof window.happiness === "number") {
+      window.happiness = clampHappiness(window.happiness - amount);
+      happiness = window.happiness;
+    }
+
+    // Fallback persistence for projects that store happiness directly in localStorage.
+    if (happiness === null) {
+      const saved = Number(localStorage.getItem("petHappiness") ?? localStorage.getItem("happiness"));
+      happiness = clampHappiness(Number.isFinite(saved) ? saved - amount : 100 - amount);
+    }
+
+    localStorage.setItem("petHappiness", String(happiness));
+    localStorage.setItem("happiness", String(happiness));
+
+    const percent = `${happiness}%`;
+    ["happiness", "pet-happiness", "happiness-value"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(happiness);
+    });
+    ["happiness-bar", "pet-happiness-bar"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.width = percent;
+    });
+
+    window.dispatchEvent(new CustomEvent("pet:happiness:changed", {
+      detail: { happiness, delta: -amount, source: "trolling" }
+    }));
+  }
+
+  // ===========================================================
   // 🧭 SCROLLABLE TOOLBAR
   // ===========================================================
   const trollBar = document.createElement("div");
@@ -237,6 +290,7 @@
     const impactTimer = setTimeout(() => {
       if (didHit) {
         playSound(hammerSound, 0.95);
+        decreasePetHappiness();
         pet.recoilUntil = Date.now() + 120;
         pet.hurtUntil   = Date.now() + 450;
       }
@@ -269,6 +323,7 @@
   butterBtn.addEventListener("click", () => {
     currentState = "butter";
     playSound(butterSound);
+    decreasePetHappiness();
   });
 
   // ===========================================================
@@ -324,6 +379,7 @@
       currentState = "wet";
       stopActiveWater();
       activeWaterAudio = playSound(waterSound, 0.9, true);
+      decreasePetHappiness();
       touchingPet = true;
     } else if (!hit && touchingPet) {
       stopActiveWater();
